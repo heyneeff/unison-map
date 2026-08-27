@@ -45,7 +45,7 @@
   #map-frame{
     position:relative;
     width:100%;
-    aspect-ratio:2005/2552; /* locked to the background image's native size */
+    aspect-ratio:1080/1456; /* locked to the background image's native size */
     overflow:hidden;
   }
   #map-frame img.bg{
@@ -145,12 +145,33 @@
     50%{ transform:translate(-2%,-2%) rotate(-3deg); }
     75%{ transform:translate(2%,4%) rotate(2deg); }
   }
-  .decor.deco-arrow img.piece{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)); }
   .decor.deco-logo img.piece{ filter:drop-shadow(0 4px 10px rgba(0,0,0,.45)); }
+
+  /* arrow: gentle bob (on the wrapper, so it doesn't fight the flip/rotate transform
+     on the image) plus a pulsing glow (on filter only, same reason). */
+  .decor.deco-arrow{ animation:arrow-bob 2.2s ease-in-out infinite; }
+  .decor.deco-arrow img.piece{ animation:arrow-glow 2.2s ease-in-out infinite; }
+  @keyframes arrow-bob{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-10%); }
+  }
+  @keyframes arrow-glow{
+    0%,100%{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)) drop-shadow(0 0 4px rgba(255,214,120,.35)); }
+    50%{ filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)) drop-shadow(0 0 16px rgba(255,214,120,.95)); }
+  }
+
+  /* every map pin: a small, staggered "dancy" bump so the map feels alive */
+  .hotspot{ animation:icon-bump 1.7s ease-in-out infinite; animation-delay:var(--bump-delay, 0s); }
+  @keyframes icon-bump{
+    0%,100%{ transform:translateY(0) scale(1); }
+    50%{ transform:translateY(-5%) scale(1.035); }
+  }
 
   /* ---------- edit mode ---------- */
   body.editing .hotspot,
   body.editing .decor{ cursor:move; }
+  body.editing .hotspot,
+  body.editing .decor.deco-arrow{ animation-play-state:paused; }
   body.editing .hotspot .card{ display:none; } /* keep cards out of the way while editing */
   body.editing .hotspot .ring,
   body.editing .decor .ring{
@@ -227,39 +248,78 @@
   }
   .modal .modal-actions{ display:flex; gap:10px; margin-top:10px; justify-content:flex-end; }
 
-  /* ---------- key panel ---------- */
+  /* ---------- key menu (toggle, top-right of the map) ---------- */
+  .key-toggle-btn{
+    position:absolute;
+    top:2.5%; right:2.5%;
+    z-index:30;
+    background:#241a10ee;
+    color:var(--parchment);
+    border:2px solid var(--gold);
+    border-radius:999px;
+    padding:8px 16px;
+    font-family:Georgia,serif;
+    font-size:clamp(11px,2.6vw,14px);
+    font-weight:bold;
+    letter-spacing:.03em;
+    cursor:pointer;
+    box-shadow:0 3px 10px rgba(0,0,0,.5);
+    display:flex; align-items:center; gap:6px;
+  }
+  .key-toggle-btn:hover{ background:#2f2213ee; }
+  .key-toggle-btn .chev{ transition:transform .2s ease; display:inline-block; }
+  .key-panel.open ~ .key-toggle-btn .chev,
+  .key-toggle-btn.open .chev{ transform:rotate(180deg); }
+
   .key-panel{
-    max-width:1100px;
-    margin:14px auto 30px;
-    padding:16px 18px;
-    background:#241a10;
-    border:1px solid #4a3320;
-    border-radius:10px;
+    position:absolute;
+    top:calc(2.5% + 42px);
+    right:2.5%;
+    z-index:29;
+    width:min(320px, 62vw);
+    max-height:min(70%, 560px);
+    overflow-y:auto;
+    padding:14px 14px 16px;
+    background:#1c140fee;
+    border:2px solid var(--gold);
+    border-radius:12px;
     color:var(--parchment);
     font-family:Georgia,serif;
+    box-shadow:0 10px 30px rgba(0,0,0,.6);
+    transform-origin:top right;
+    opacity:0;
+    transform:scale(.92) translateY(-6px);
+    pointer-events:none;
+    transition:opacity .16s ease, transform .16s ease;
+  }
+  .key-panel.open{
+    opacity:1;
+    transform:scale(1) translateY(0);
+    pointer-events:auto;
   }
   .key-panel h2{
-    margin:0 0 12px; font-size:18px; color:var(--gold); text-align:center;
+    margin:0 0 10px; font-size:15px; color:var(--gold); text-align:center;
     letter-spacing:.03em;
   }
-  .key-group{ margin-bottom:14px; }
+  .key-group{ margin-bottom:12px; }
   .key-group:last-child{ margin-bottom:0; }
   .key-group-title{
     display:flex; align-items:center; gap:8px;
-    font-size:13px; text-transform:uppercase; letter-spacing:.06em;
+    font-size:11.5px; text-transform:uppercase; letter-spacing:.06em;
     color:#cbb98a; margin-bottom:6px; padding-bottom:4px;
     border-bottom:1px solid #4a3320;
   }
-  .key-group-title i{ width:10px; height:10px; border-radius:50%; display:inline-block; }
-  .key-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:6px; }
+  .key-group-title i{ width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .key-list{ display:flex; flex-direction:column; gap:5px; }
   .key-item{
     display:flex; align-items:center; gap:8px;
     background:#2f2213; border:1px solid #4a3320; border-radius:8px;
-    padding:5px 8px; cursor:pointer; text-align:left;
-    font-family:Georgia,serif; color:var(--parchment); font-size:13px;
+    padding:4px 7px; cursor:pointer; text-align:left;
+    font-family:Georgia,serif; color:var(--parchment); font-size:12.5px;
+    width:100%;
   }
   .key-item:hover{ background:#3a2a17; border-color:var(--gold); }
-  .key-item img{ width:28px; height:28px; object-fit:contain; flex-shrink:0; }
+  .key-item img{ width:24px; height:24px; object-fit:contain; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -281,11 +341,12 @@
     <img class="bg" src="bg.jpg" alt="Unison site map">
     <!-- hotspots + decor injected by JS -->
   </div>
-</div>
 
-<div class="key-panel">
-  <h2>Map Key</h2>
-  <div id="key-groups"></div>
+  <button class="key-toggle-btn" id="key-toggle-btn">Map Key <span class="chev">&#9660;</span></button>
+  <div class="key-panel" id="key-panel">
+    <h2>Map Key</h2>
+    <div id="key-groups"></div>
+  </div>
 </div>
 
 <div class="modal-backdrop" id="export-modal">
@@ -308,47 +369,47 @@
    stay as-is.
    ============================================================ */
 const LOCATIONS = [
-  { icon:"playhouse_slide.png", x:54.514, y:7.524, w:8.529, h:8.542, cat:"play", name:"[Play Fort]", desc:"Add a description." },
-  { icon:"bigtop_tent.png", x:49.825, y:15.752, w:17.955, h:8.15, cat:"stage", name:"[Big Top]", desc:"Add a description." },
-  { icon:"moon.png", x:60.499, y:23.276, w:7.781, h:5.799, cat:"play", name:"[Moon]", desc:"Add a description." },
-  { icon:"slide_tower.png", x:54.065, y:28.605, w:12.818, h:7.759, cat:"play", name:"[Slide]", desc:"Add a description." },
-  { icon:"small_dock.png", x:34.564, y:11.285, w:9.825, h:6.074, cat:"play", name:"[Dock]", desc:"Add a description." },
-  { icon:"mandala_wreath.png", x:87.88, y:11.755, w:10.574, h:6.975, cat:"sanctuary", name:"[Mandala]", desc:"Add a description." },
-  { icon:"cream_tents_cluster.png", x:88.379, y:18.417, w:11.621, h:9.483, cat:"market", name:"[Market Tents]", desc:"Add a description." },
-  { icon:"goddess_egg_statue.png", x:74.115, y:12.97, w:10.374, h:8.229, cat:"sanctuary", name:"[Goddess Statue]", desc:"Add a description." },
-  { icon:"water_slide.png", x:33.12, y:16.95, w:6.67, h:13.0, cat:"play", name:"[Water Slide]", desc:"Add a description." },
-  { icon:"cream_tent_single.png", x:73.815, y:21.552, w:10.025, h:4.624, cat:"market", name:"[Market Tent]", desc:"Add a description." },
-  { icon:"purple_market_stall.png", x:73.965, y:25.862, w:12.718, h:6.074, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
-  { icon:"teal_food_truck.png", x:27.032, y:30.368, w:10.923, h:6.27, cat:"market", name:"[Food Truck]", desc:"Add a description." },
-  { icon:"market_tents_row.png", x:89.975, y:34.483, w:10.025, h:16.732, cat:"market", name:"[Vendor Row]", desc:"Add a description." },
-  { icon:"purple_tent_stall_a.png", x:1.147, y:37.813, w:10.025, h:6.818, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
-  { icon:"yellow_food_truck.png", x:26.484, y:35.854, w:11.122, h:6.544, cat:"market", name:"[Food Truck]", desc:"Add a description." },
-  { icon:"purple_poncho.png", x:60.349, y:36.834, w:7.581, h:7.249, cat:"market", name:"[Clothing Vendor]", desc:"Add a description." },
-  { icon:"marigold_flower.png", x:76.608, y:35.658, w:7.781, h:6.975, cat:"sanctuary", name:"[Marigold Patch]", desc:"Add a description." },
-  { icon:"signup_chalkboard.png", x:31.072, y:42.79, w:4.738, h:6.348, cat:"market", name:"[Sign-Up Board]", desc:"Add a description." },
-  { icon:"hug_statue.png", x:51.471, y:44.632, w:7.082, h:7.171, cat:"sanctuary", name:"[Hug Statue]", desc:"Add a description." },
-  { icon:"flying_carpet.png", x:62.843, y:45.024, w:12.818, h:6.23, cat:"stage", name:"[Flying Carpet]", desc:"Add a description." },
-  { icon:"watchtower_stage.png", x:61.347, y:48.158, w:18.105, h:15.4, cat:"stage", name:"[Main Stage]", desc:"Add a description." },
-  { icon:"restroom.png", x:1.446, y:55.368, w:9.526, h:6.779, cat:"amenity", name:"[Restrooms]", desc:"Add a description." },
-  { icon:"purple_tent_stall_b.png", x:47.731, y:55.408, w:10.075, h:6.818, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
-  { icon:"portal_doors_column.png", x:92.868, y:57.328, w:7.132, h:24.255, cat:"sanctuary", name:"[Portal Doors]", desc:"Add a description." },
-  { icon:"purple_pavilion.png", x:2.344, y:63.754, w:13.566, h:9.404, cat:"sanctuary", name:"[Pavilion]", desc:"Add a description." },
-  { icon:"sun_orb_sculpture.png", x:22.244, y:63.205, w:7.88, h:6.936, cat:"sanctuary", name:"[Sun Orb]", desc:"Add a description." },
-  { icon:"campfire.png", x:44.638, y:63.166, w:5.337, h:4.075, cat:"stage", name:"[Campfire Circle]", desc:"Add a description." },
-  { icon:"snakes_statue.png", x:59.751, y:66.536, w:10.274, h:7.994, cat:"sanctuary", name:"[Snakes Statue]", desc:"Add a description." },
-  { icon:"earth_hands_sculpture.png", x:74.414, y:64.107, w:11.072, h:8.738, cat:"sanctuary", name:"[Earth & Hands]", desc:"Add a description." },
-  { icon:"canopy_lounge.png", x:1.297, y:72.61, w:10.973, h:8.464, cat:"sanctuary", name:"[Chill Lounge]", desc:"Add a description." },
-  { icon:"puzzle_cube.png", x:20.0, y:71.669, w:8.878, h:6.975, cat:"sanctuary", name:"[Puzzle Cube]", desc:"Add a description." },
-  { icon:"dark_ceremony_yurt.png", x:66.085, y:77.351, w:13.965, h:11.755, cat:"sanctuary", name:"[Ceremony Tent]", desc:"Add a description." },
-  { icon:"eye_sculpture.png", x:18.454, y:79.428, w:10.823, h:6.975, cat:"sanctuary", name:"[Eye Sculpture]", desc:"Add a description." },
-  { icon:"wizard_portal.png", x:13.117, y:86.089, w:12.618, h:9.326, cat:"sanctuary", name:"[Portal]", desc:"Add a description." },
-  { icon:"sports_court.png", x:0.549, y:86.403, w:12.17, h:11.951, cat:"amenity", name:"[Sports Court]", desc:"Add a description." },
+  { icon:"playhouse_slide.png", x:54.147, y:22.299, w:7.573, h:6.759, cat:"play", name:"[Play Fort]", desc:"Add a description." },
+  { icon:"bigtop_tent.png", x:49.983, y:28.809, w:15.943, h:6.448, cat:"stage", name:"[Big Top]", desc:"Add a description." },
+  { icon:"moon.png", x:59.462, y:34.762, w:6.909, h:4.588, cat:"play", name:"[Moon]", desc:"Add a description." },
+  { icon:"slide_tower.png", x:53.748, y:38.979, w:11.382, h:6.139, cat:"play", name:"[Slide]", desc:"Add a description." },
+  { icon:"small_dock.png", x:36.432, y:25.275, w:8.724, h:4.806, cat:"play", name:"[Dock]", desc:"Add a description." },
+  { icon:"mandala_wreath.png", x:83.775, y:25.647, w:9.389, h:5.519, cat:"sanctuary", name:"[Mandala]", desc:"Add a description." },
+  { icon:"cream_tents_cluster.png", x:84.218, y:30.918, w:10.319, h:7.503, cat:"market", name:"[Market Tents]", desc:"Add a description." },
+  { icon:"goddess_egg_statue.png", x:71.552, y:26.608, w:9.212, h:6.511, cat:"sanctuary", name:"[Goddess Statue]", desc:"Add a description." },
+  { icon:"water_slide.png", x:35.150, y:29.757, w:5.923, h:10.286, cat:"play", name:"[Water Slide]", desc:"Add a description." },
+  { icon:"cream_tent_single.png", x:71.286, y:33.398, w:8.902, h:3.659, cat:"market", name:"[Market Tent]", desc:"Add a description." },
+  { icon:"purple_market_stall.png", x:71.419, y:36.808, w:11.293, h:4.806, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
+  { icon:"teal_food_truck.png", x:29.744, y:40.374, w:9.699, h:4.961, cat:"market", name:"[Food Truck]", desc:"Add a description." },
+  { icon:"market_tents_row.png", x:85.635, y:43.629, w:8.902, h:13.239, cat:"market", name:"[Vendor Row]", desc:"Add a description." },
+  { icon:"purple_tent_stall_a.png", x:6.759, y:46.264, w:8.902, h:5.394, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
+  { icon:"yellow_food_truck.png", x:29.258, y:44.714, w:9.876, h:5.178, cat:"market", name:"[Food Truck]", desc:"Add a description." },
+  { icon:"purple_poncho.png", x:59.328, y:45.490, w:6.732, h:5.735, cat:"market", name:"[Clothing Vendor]", desc:"Add a description." },
+  { icon:"marigold_flower.png", x:73.766, y:44.559, w:6.909, h:5.519, cat:"sanctuary", name:"[Marigold Patch]", desc:"Add a description." },
+  { icon:"signup_chalkboard.png", x:33.332, y:50.202, w:4.207, h:5.023, cat:"market", name:"[Sign-Up Board]", desc:"Add a description." },
+  { icon:"hug_statue.png", x:51.445, y:51.659, w:6.289, h:5.674, cat:"sanctuary", name:"[Hug Statue]", desc:"Add a description." },
+  { icon:"flying_carpet.png", x:61.543, y:51.970, w:11.382, h:4.929, cat:"stage", name:"[Flying Carpet]", desc:"Add a description." },
+  { icon:"watchtower_stage.png", x:60.215, y:54.449, w:16.077, h:12.185, cat:"stage", name:"[Main Stage]", desc:"Add a description." },
+  { icon:"restroom.png", x:7.025, y:60.154, w:8.459, h:5.364, cat:"amenity", name:"[Restrooms]", desc:"Add a description." },
+  { icon:"purple_tent_stall_b.png", x:48.124, y:60.185, w:8.946, h:5.394, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
+  { icon:"portal_doors_column.png", x:88.204, y:61.705, w:6.333, h:19.191, cat:"sanctuary", name:"[Portal Doors]", desc:"Add a description." },
+  { icon:"purple_pavilion.png", x:7.822, y:66.789, w:12.046, h:7.441, cat:"sanctuary", name:"[Pavilion]", desc:"Add a description." },
+  { icon:"sun_orb_sculpture.png", x:25.493, y:66.355, w:6.997, h:5.488, cat:"sanctuary", name:"[Sun Orb]", desc:"Add a description." },
+  { icon:"campfire.png", x:45.378, y:66.324, w:4.739, h:3.224, cat:"stage", name:"[Campfire Circle]", desc:"Add a description." },
+  { icon:"snakes_statue.png", x:58.797, y:68.990, w:9.123, h:6.325, cat:"sanctuary", name:"[Snakes Statue]", desc:"Add a description." },
+  { icon:"earth_hands_sculpture.png", x:71.818, y:67.068, w:9.832, h:6.914, cat:"sanctuary", name:"[Earth & Hands]", desc:"Add a description." },
+  { icon:"canopy_lounge.png", x:6.892, y:73.796, w:9.744, h:6.697, cat:"sanctuary", name:"[Chill Lounge]", desc:"Add a description." },
+  { icon:"puzzle_cube.png", x:23.500, y:73.051, w:7.883, h:5.519, cat:"sanctuary", name:"[Puzzle Cube]", desc:"Add a description." },
+  { icon:"dark_ceremony_yurt.png", x:64.422, y:77.547, w:12.400, h:9.301, cat:"sanctuary", name:"[Ceremony Tent]", desc:"Add a description." },
+  { icon:"eye_sculpture.png", x:22.127, y:79.190, w:9.610, h:5.519, cat:"sanctuary", name:"[Eye Sculpture]", desc:"Add a description." },
+  { icon:"wizard_portal.png", x:17.388, y:84.461, w:11.204, h:7.379, cat:"sanctuary", name:"[Portal]", desc:"Add a description." },
+  { icon:"sports_court.png", x:6.228, y:84.709, w:10.807, h:9.456, cat:"amenity", name:"[Sports Court]", desc:"Add a description." },
 ];
 
 /* Decorative, non-informational pieces (no hover card, no key entry). */
 const DECOR = [
-  { id:"arrow", icon:"arrow.png", x:47.9, y:24.7, w:6, h:5.5, rot:120, flip:true },
-  { id:"logo",  icon:"logo.png",  x:45.5, y:1,    w:9, h:9,   rot:0 },
+  { id:"arrow", icon:"arrow.png", x:64.346, y:24.258, w:5.328, h:4.352, rot:55, flip:true },
+  { id:"logo",  icon:"logo.png",  x:46.144, y:17.137, w:7.992, h:7.121, rot:0 },
 ];
 
 const CAT_ORDER = ["stage","market","sanctuary","play","amenity"];
@@ -500,6 +561,7 @@ LOCATIONS.forEach((loc, i) => {
   hs.style.top = loc.y + "%";
   hs.style.width = loc.w + "%";
   hs.style.height = loc.h + "%";
+  hs.style.setProperty("--bump-delay", ((i * 0.37) % 1.7) + "s");
 
   hs.innerHTML = `
     <div class="ring"></div>
@@ -588,6 +650,20 @@ document.getElementById("btn-copy").addEventListener("click", () => {
 });
 
 // ---- map key ----
+const keyPanelEl = document.getElementById("key-panel");
+const keyToggleBtn = document.getElementById("key-toggle-btn");
+function openKeyPanel(){ keyPanelEl.classList.add("open"); keyToggleBtn.classList.add("open"); }
+function closeKeyPanel(){ keyPanelEl.classList.remove("open"); keyToggleBtn.classList.remove("open"); }
+keyToggleBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  keyPanelEl.classList.contains("open") ? closeKeyPanel() : openKeyPanel();
+});
+document.addEventListener("click", (e) => {
+  if (keyPanelEl.classList.contains("open") && !e.target.closest(".key-panel") && !e.target.closest(".key-toggle-btn")) {
+    closeKeyPanel();
+  }
+});
+
 const keyGroupsEl = document.getElementById("key-groups");
 CAT_ORDER.forEach(cat => {
   const items = LOCATIONS.filter(l => l.cat === cat);
@@ -605,6 +681,7 @@ CAT_ORDER.forEach(cat => {
       e.stopPropagation();
       const hs = frame.querySelector(`.hotspot[data-id="${loc._id}"]`);
       if (!hs) return;
+      closeKeyPanel();
       document.getElementById("map-wrap").scrollIntoView({ behavior:"smooth", block:"center" });
       document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
       hs.classList.add("active");
