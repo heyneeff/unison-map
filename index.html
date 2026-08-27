@@ -347,7 +347,7 @@ const LOCATIONS = [
 
 /* Decorative, non-informational pieces (no hover card, no key entry). */
 const DECOR = [
-  { id:"arrow", icon:"arrow.png", x:47.9, y:24.7, w:6, h:5.5, rot:262 },
+  { id:"arrow", icon:"arrow.png", x:47.9, y:24.7, w:6, h:5.5, rot:120, flip:true },
   { id:"logo",  icon:"logo.png",  x:45.5, y:1,    w:9, h:9,   rot:0 },
 ];
 
@@ -484,7 +484,7 @@ document.getElementById("rotate-slider").addEventListener("input", (e) => {
   selected.data.rot = parseInt(e.target.value, 10);
   document.getElementById("rotate-readout").textContent = selected.data.rot + "°";
   const img = selected.el.querySelector("img.piece");
-  img.style.transform = `rotate(${selected.data.rot}deg)`;
+  img.style.transform = `${selected.opts.flip ? "scaleX(-1) " : ""}rotate(${selected.data.rot}deg)`;
 });
 document.getElementById("rotate-slider").addEventListener("change", () => {
   if (!selected || !selected.opts.rotatable) return;
@@ -542,11 +542,11 @@ DECOR.forEach((d) => {
   el.innerHTML = `
     <div class="ring"></div>
     <div class="edit-outline"></div>
-    <img class="piece" src="icons/${d.icon}" alt="" style="transform:rotate(${d.rot||0}deg);">
+    <img class="piece" src="icons/${d.icon}" alt="" style="transform:${d.flip ? "scaleX(-1) " : ""}rotate(${d.rot||0}deg);">
     <div class="resize-handle"></div>
   `;
   frame.appendChild(el);
-  attachDragResize(el, d, { rotatable: d.id === "arrow", label: d.id });
+  attachDragResize(el, d, { rotatable: d.id === "arrow", label: d.id, flip: !!d.flip });
 });
 
 // ---- toolbar wiring ----
@@ -572,7 +572,7 @@ document.getElementById("btn-export").addEventListener("click", () => {
   });
   out += "];\n\n// ---- replace the existing `const DECOR = [ ... ];` block with this ----\nconst DECOR = [\n";
   DECOR.forEach(d => {
-    out += `  { id:"${d.id}", icon:"${d.icon}", x:${fmt(d.x)}, y:${fmt(d.y)}, w:${fmt(d.w)}, h:${fmt(d.h)}, rot:${fmt(d.rot||0)} },\n`;
+    out += `  { id:"${d.id}", icon:"${d.icon}", x:${fmt(d.x)}, y:${fmt(d.y)}, w:${fmt(d.w)}, h:${fmt(d.h)}, rot:${fmt(d.rot||0)}${d.flip ? ", flip:true" : ""} },\n`;
   });
   out += "];\n";
   document.getElementById("export-text").value = out;
