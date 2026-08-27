@@ -266,7 +266,8 @@
 
 <div class="toolbar">
   <button id="btn-toggle-edit">Editing: Off</button>
-  <button id="btn-reset">Reset (reload page)</button>
+  <button id="btn-reset">Reload (keep saved layout)</button>
+  <button id="btn-clear">Clear saved layout</button>
   <button id="btn-export" class="primary">Export layout</button>
   <div class="rotate-box" id="rotate-box">
     <label>Rotate: <input type="range" id="rotate-slider" min="0" max="359" value="0"></label>
@@ -315,7 +316,7 @@ const LOCATIONS = [
   { icon:"mandala_wreath.png", x:87.88, y:11.755, w:10.574, h:6.975, cat:"sanctuary", name:"[Mandala]", desc:"Add a description." },
   { icon:"cream_tents_cluster.png", x:88.379, y:18.417, w:11.621, h:9.483, cat:"market", name:"[Market Tents]", desc:"Add a description." },
   { icon:"goddess_egg_statue.png", x:74.115, y:12.97, w:10.374, h:8.229, cat:"sanctuary", name:"[Goddess Statue]", desc:"Add a description." },
-  { icon:"blue_slide.png", x:31.671, y:18.456, w:9.576, h:9.992, cat:"play", name:"[Slide]", desc:"Add a description." },
+  { icon:"water_slide.png", x:33.12, y:16.95, w:6.67, h:13.0, cat:"play", name:"[Water Slide]", desc:"Add a description." },
   { icon:"cream_tent_single.png", x:73.815, y:21.552, w:10.025, h:4.624, cat:"market", name:"[Market Tent]", desc:"Add a description." },
   { icon:"purple_market_stall.png", x:73.965, y:25.862, w:12.718, h:6.074, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
   { icon:"teal_food_truck.png", x:27.032, y:30.368, w:10.923, h:6.27, cat:"market", name:"[Food Truck]", desc:"Add a description." },
@@ -365,6 +366,37 @@ let selected = null; // currently selected element in edit mode, for resize/rota
 
 function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 
+/* ============================================================
+   Persistence: dragged/resized/rotated positions are saved to this
+   browser's localStorage automatically, so they survive a reload
+   on this device. That does NOT push the change to other visitors
+   — for that, use "Export layout" in the ?edit toolbar and paste
+   the result over the LOCATIONS / DECOR arrays above, then publish.
+   ============================================================ */
+const STORAGE_KEY = "unisonMapLayout_v1";
+
+function loadSavedLayout(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+  catch(err){ return {}; }
+}
+function saveLayout(){
+  const data = { locations:{}, decor:{} };
+  LOCATIONS.forEach(l => { data.locations[l._id] = { x:l.x, y:l.y, w:l.w, h:l.h }; });
+  DECOR.forEach(d => { data.decor[d.id] = { x:d.x, y:d.y, w:d.w, h:d.h, rot:d.rot||0 }; });
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(err){}
+}
+
+LOCATIONS.forEach((loc, i) => { loc._id = i; });
+const savedLayout = loadSavedLayout();
+LOCATIONS.forEach(loc => {
+  const s = savedLayout.locations && savedLayout.locations[loc._id];
+  if (s) Object.assign(loc, s);
+});
+DECOR.forEach(d => {
+  const s = savedLayout.decor && savedLayout.decor[d.id];
+  if (s) Object.assign(d, s);
+});
+
 function attachDragResize(el, data, opts){
   const handle = el.querySelector(".resize-handle");
 
@@ -390,6 +422,7 @@ function attachDragResize(el, data, opts){
       try { el.releasePointerCapture(ev.pointerId); } catch(err){}
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
+      saveLayout();
     }
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
@@ -420,6 +453,7 @@ function attachDragResize(el, data, opts){
         try { handle.releasePointerCapture(ev.pointerId); } catch(err){}
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
+        saveLayout();
       }
       document.addEventListener("pointermove", onMove);
       document.addEventListener("pointerup", onUp);
@@ -452,10 +486,13 @@ document.getElementById("rotate-slider").addEventListener("input", (e) => {
   const img = selected.el.querySelector("img.piece");
   img.style.transform = `rotate(${selected.data.rot}deg)`;
 });
+document.getElementById("rotate-slider").addEventListener("change", () => {
+  if (!selected || !selected.opts.rotatable) return;
+  saveLayout();
+});
 
 // ---- build hotspots ----
 LOCATIONS.forEach((loc, i) => {
-  loc._id = i;
   const hs = document.createElement("div");
   hs.className = `hotspot cat-${loc.cat}`;
   hs.dataset.id = i;
@@ -519,6 +556,12 @@ document.getElementById("btn-toggle-edit").addEventListener("click", (e) => {
   document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
 });
 document.getElementById("btn-reset").addEventListener("click", () => location.reload());
+document.getElementById("btn-clear").addEventListener("click", () => {
+  if (confirm("Clear this browser's saved drag/resize edits and revert to the code defaults?")) {
+    try { localStorage.removeItem(STORAGE_KEY); } catch(err){}
+    location.reload();
+  }
+});
 
 function fmt(n){ return Math.round(n * 1000) / 1000; }
 
