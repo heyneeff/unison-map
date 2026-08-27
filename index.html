@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unison Interactive Map</title>
+<style>
+  :root{
+    --parchment:#f3e6c9;
+    --ink:#3a2b1a;
+    --gold:#c9962f;
+    --purple:#6b4a8a;
+    --purple-dark:#4a3363;
+    --crimson:#a8433a;
+    --teal:#2f8a86;
+    --green:#4f7c3f;
+    --card-bg:#fbf2dd;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#1c140c;font-family:Georgia,'Times New Roman',serif;}
+
+  /* ============================================================
+     EDIT ME: everything a non-developer needs to fill in lives in
+     the LOCATIONS array near the bottom of this file, inside the
+     <script> tag. Each entry has a "name" and "desc" field — just
+     replace the placeholder text. Nothing else needs to change.
+     ============================================================ */
+
+  #map-wrap{
+    position:relative;
+    width:100%;
+    max-width:1100px;
+    margin:0 auto;
+    background:#1c140c;
+  }
+  #map-frame{
+    position:relative;
+    width:100%;
+    /* aspect ratio locked to the background image, 2005x2552 */
+    aspect-ratio:2005/2552;
+    overflow:hidden;
+  }
+  #map-frame img.bg{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:cover;
+  }
+
+  .pin{
+    position:absolute;
+    transform:translate(-50%,-100%);
+    cursor:pointer;
+    z-index:2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .pin .dot{
+    width:2.6%;
+    aspect-ratio:1/1;
+    min-width:14px;
+    border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);
+    border:2px solid var(--parchment);
+    box-shadow:0 2px 6px rgba(0,0,0,.5);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .pin .dot::after{
+    content:"";
+    position:absolute;
+    top:50%;left:50%;
+    width:34%;
+    height:34%;
+    background:var(--parchment);
+    border-radius:50%;
+    transform:translate(-50%,-50%) rotate(45deg);
+  }
+  .pin:hover .dot, .pin.active .dot{
+    transform:rotate(-45deg) scale(1.25);
+    box-shadow:0 3px 10px rgba(0,0,0,.65);
+  }
+
+  .cat-market   .dot{ background:var(--gold); }
+  .cat-stage    .dot{ background:var(--crimson); }
+  .cat-play     .dot{ background:var(--teal); }
+  .cat-sanctuary.dot, .cat-sanctuary .dot{ background:var(--purple); }
+  .cat-amenity  .dot{ background:var(--green); }
+
+  .card{
+    position:absolute;
+    bottom:calc(100% + 10px);
+    left:50%;
+    transform:translateX(-50%) scale(.92);
+    width:min(260px, 60vw);
+    background:var(--card-bg);
+    border:2px solid var(--gold);
+    border-radius:10px;
+    padding:10px 12px 12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .15s ease, transform .15s ease;
+    text-align:left;
+  }
+  .pin:hover .card, .pin.active .card{
+    opacity:1;
+    transform:translateX(-50%) scale(1);
+    pointer-events:auto;
+  }
+  .card .icon-thumb{
+    width:56px;
+    height:56px;
+    object-fit:contain;
+    float:left;
+    margin:0 8px 4px 0;
+  }
+  .card h3{
+    margin:0 0 4px;
+    font-size:15px;
+    color:var(--purple-dark);
+    line-height:1.2;
+  }
+  .card p{
+    margin:0;
+    font-size:12.5px;
+    line-height:1.4;
+    color:var(--ink);
+  }
+  .card .cat-label{
+    display:block;
+    clear:both;
+    font-size:10px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin-top:6px;
+    font-weight:bold;
+  }
+
+  .legend{
+    max-width:1100px;
+    margin:14px auto 30px;
+    padding:12px 16px;
+    background:#241a10;
+    border:1px solid #4a3320;
+    border-radius:10px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 20px;
+    justify-content:center;
+    font-family:Georgia,serif;
+  }
+  .legend span{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:13px;
+    color:var(--parchment);
+  }
+  .legend i{
+    width:12px;height:12px;border-radius:50%;display:inline-block;
+  }
+  .legend .cat-market i{background:var(--gold);}
+  .legend .cat-stage i{background:var(--crimson);}
+  .legend .cat-play i{background:var(--teal);}
+  .legend .cat-sanctuary i{background:var(--purple);}
+  .legend .cat-amenity i{background:var(--green);}
+
+  @media (hover:none){
+    .card{ width:min(220px,70vw); }
+  }
+</style>
+</head>
+<body>
+
+<div id="map-wrap">
+  <div id="map-frame">
+    <img class="bg" src="bg.jpg" alt="Unison site map">
+    <!-- pins injected by JS -->
+  </div>
+</div>
+
+<div class="legend">
+  <span class="cat-stage"><i></i>Stage &amp; Performance</span>
+  <span class="cat-market"><i></i>Market &amp; Food</span>
+  <span class="cat-sanctuary"><i></i>Sanctuary &amp; Art</span>
+  <span class="cat-play"><i></i>Play</span>
+  <span class="cat-amenity"><i></i>Amenities</span>
+</div>
+
+<script>
+/* ============================================================
+   FILL THIS IN: one entry per pin.
+   - icon: filename in /icons (don't need to touch)
+   - x, y: position as % of the map image (don't need to touch)
+   - cat:  market | stage | play | sanctuary | amenity  (controls pin color)
+   - name: the title shown on hover — REPLACE with the real name
+   - desc: a sentence or two shown on hover — REPLACE with real info
+   ============================================================ */
+const LOCATIONS = [
+  // --- Stage & Performance ---
+  { icon:"watchtower_stage.png",  x:69.8, y:57.5, cat:"stage",     name:"[Name this stage]",      desc:"Add a description of what happens here." },
+  { icon:"bigtop_tent.png",       x:63.0, y:62.5, cat:"stage",     name:"[Big Top]",               desc:"Add a description of what happens here." },
+  { icon:"flying_carpet.png",     x:75.5, y:52.5, cat:"stage",     name:"[Flying Carpet]",          desc:"Add a description." },
+  { icon:"campfire.png",          x:58.5, y:65.0, cat:"stage",     name:"[Campfire Circle]",        desc:"Add a description." },
+
+  // --- Market & Food ---
+  { icon:"signup_chalkboard.png", x:54.5, y:32.5, cat:"market",    name:"[Sign-Up Board]",          desc:"Add a description." },
+  { icon:"teal_food_truck.png",   x:58.0, y:37.5, cat:"market",    name:"[Food Truck]",             desc:"Add a description." },
+  { icon:"yellow_food_truck.png", x:54.5, y:42.5, cat:"market",    name:"[Food Truck]",             desc:"Add a description." },
+  { icon:"market_tents_row.png",  x:65.5, y:35.0, cat:"market",    name:"[Vendor Row]",             desc:"Add a description." },
+  { icon:"cream_tent_single.png", x:70.5, y:32.5, cat:"market",    name:"[Market Tent]",            desc:"Add a description." },
+  { icon:"cream_tents_cluster.png",x:73.5,y:40.0, cat:"market",    name:"[Market Tents]",           desc:"Add a description." },
+  { icon:"purple_tent_stall_a.png",x:63.5,y:45.0, cat:"market",    name:"[Vendor Stall]",           desc:"Add a description." },
+  { icon:"purple_tent_stall_b.png",x:68.5,y:47.5, cat:"market",    name:"[Vendor Stall]",           desc:"Add a description." },
+  { icon:"purple_market_stall.png",x:78.5,y:35.0, cat:"market",    name:"[Vendor Stall]",           desc:"Add a description." },
+  { icon:"purple_poncho.png",     x:76.0, y:45.0, cat:"market",    name:"[Clothing Vendor]",        desc:"Add a description." },
+  { icon:"marigold_flower.png",   x:81.0, y:42.5, cat:"market",    name:"[Marigold Patch]",         desc:"Add a description." },
+
+  // --- Play ---
+  { icon:"playhouse_slide.png",   x:60.5, y:21.0, cat:"play",      name:"[Play Fort]",              desc:"Add a description." },
+  { icon:"blue_slide.png",        x:66.0, y:25.0, cat:"play",      name:"[Slide]",                  desc:"Add a description." },
+  { icon:"moon_slide_tower.png",  x:50.5, y:27.5, cat:"play",      name:"[Moon Slide]",             desc:"Add a description." },
+  { icon:"small_dock.png",        x:45.0, y:32.5, cat:"play",      name:"[Dock]",                   desc:"Add a description." },
+
+  // --- Sanctuary & Art ---
+  { icon:"dark_ceremony_yurt.png",x:73.5, y:72.5, cat:"sanctuary", name:"[Ceremony Tent]",          desc:"Add a description." },
+  { icon:"wizard_portal.png",     x:78.5, y:77.5, cat:"sanctuary", name:"[Portal]",                 desc:"Add a description." },
+  { icon:"eye_sculpture.png",     x:70.5, y:80.0, cat:"sanctuary", name:"[Eye Sculpture]",          desc:"Add a description." },
+  { icon:"earth_hands_sculpture.png",x:65.5,y:85.0, cat:"sanctuary", name:"[Earth &amp; Hands]",    desc:"Add a description." },
+  { icon:"snakes_statue.png",     x:60.5, y:77.5, cat:"sanctuary", name:"[Snakes Statue]",          desc:"Add a description." },
+  { icon:"goddess_egg_statue.png",x:63.0, y:72.5, cat:"sanctuary", name:"[Goddess Statue]",         desc:"Add a description." },
+  { icon:"sun_orb_sculpture.png", x:55.5, y:80.0, cat:"sanctuary", name:"[Sun Orb]",                desc:"Add a description." },
+  { icon:"mandala_wreath.png",    x:68.0, y:67.5, cat:"sanctuary", name:"[Mandala]",                desc:"Add a description." },
+  { icon:"canopy_lounge.png",     x:75.5, y:85.0, cat:"sanctuary", name:"[Chill Lounge]",           desc:"Add a description." },
+  { icon:"puzzle_cube.png",       x:53.0, y:75.0, cat:"sanctuary", name:"[Puzzle Cube]",            desc:"Add a description." },
+  { icon:"hug_statue.png",        x:58.0, y:70.0, cat:"sanctuary", name:"[Hug Statue]",             desc:"Add a description." },
+  { icon:"portal_doors_column.png",x:78.5,y:65.0, cat:"sanctuary", name:"[Portal Doors]",           desc:"Add a description." },
+  { icon:"purple_pavilion.png",   x:68.5, y:87.5, cat:"sanctuary", name:"[Pavilion]",               desc:"Add a description." },
+
+  // --- Amenities ---
+  { icon:"restroom.png",          x:81.0, y:30.0, cat:"amenity",   name:"Restrooms",                desc:"Add a description." },
+  { icon:"sports_court.png",      x:88.5, y:67.5, cat:"amenity",   name:"[Sports Court]",           desc:"Add a description." },
+];
+
+const CAT_LABELS = {
+  market:"Market & Food", stage:"Stage & Performance", play:"Play",
+  sanctuary:"Sanctuary & Art", amenity:"Amenities"
+};
+
+const frame = document.getElementById("map-frame");
+
+LOCATIONS.forEach((loc, i) => {
+  const pin = document.createElement("div");
+  pin.className = `pin cat-${loc.cat}`;
+  pin.style.left = loc.x + "%";
+  pin.style.top = loc.y + "%";
+
+  pin.innerHTML = `
+    <div class="card">
+      <img class="icon-thumb" src="icons/${loc.icon}" alt="">
+      <h3>${loc.name}</h3>
+      <p>${loc.desc}</p>
+      <span class="cat-label">${CAT_LABELS[loc.cat]}</span>
+    </div>
+    <div class="dot"></div>
+  `;
+
+  // tap-to-toggle for touch devices
+  pin.addEventListener("click", (e) => {
+    const isActive = pin.classList.contains("active");
+    document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
+    if (!isActive) pin.classList.add("active");
+  });
+
+  frame.appendChild(pin);
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".pin")) {
+    document.querySelectorAll(".pin.active").forEach(p => p.classList.remove("active"));
+  }
+});
+</script>
+
+</body>
+</html>
