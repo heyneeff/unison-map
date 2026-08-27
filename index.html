@@ -134,6 +134,45 @@
     font-weight:bold;
   }
 
+  .decor-arrow{
+    position:absolute;
+    z-index:3;
+    pointer-events:none;
+  }
+  .decor-arrow img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));
+    /* EDIT ME: change this rotation to re-aim the arrow */
+    transform:rotate(262deg);
+  }
+
+  .logo-wrap{
+    position:absolute;
+    top:1%;
+    left:50%;
+    width:9%;
+    aspect-ratio:1/1;
+    transform:translateX(-50%);
+    z-index:6;
+    pointer-events:none;
+  }
+  .logo-wrap img{
+    width:100%;
+    height:100%;
+    display:block;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.45));
+    animation:logo-float 6s ease-in-out infinite;
+  }
+  @keyframes logo-float{
+    0%,100%{ transform:translate(0,0) rotate(0deg); }
+    25%{ transform:translate(3%,-6%) rotate(4deg); }
+    50%{ transform:translate(-2%,-2%) rotate(-3deg); }
+    75%{ transform:translate(2%,4%) rotate(2deg); }
+  }
+
   .legend{
     max-width:1100px;
     margin:14px auto 30px;
@@ -170,6 +209,11 @@
   <div id="map-frame">
     <img class="bg" src="bg.jpg" alt="Unison site map">
     <!-- hotspots injected by JS -->
+    <div class="logo-wrap"><img src="icons/logo.png" alt="Unison"></div>
+    <!-- EDIT ME: nudge left/top % to reposition, or the rotate() in .decor-arrow img to re-aim -->
+    <div class="decor-arrow" style="left:47.9%; top:24.7%; width:6%; height:5.5%;">
+      <img src="icons/arrow.png" alt="">
+    </div>
   </div>
 </div>
 
@@ -191,7 +235,8 @@
 const LOCATIONS = [
   { icon:"playhouse_slide.png", x:54.514, y:7.524, w:8.529, h:8.542, cat:"play", name:"[Play Fort]", desc:"Add a description." },
   { icon:"bigtop_tent.png", x:49.825, y:15.752, w:17.955, h:8.15, cat:"stage", name:"[Big Top]", desc:"Add a description." },
-  { icon:"moon_slide_tower.png", x:54.065, y:23.589, w:14.214, h:13.44, cat:"play", name:"[Moon Slide]", desc:"Add a description." },
+  { icon:"moon.png", x:60.499, y:23.276, w:7.781, h:5.799, cat:"play", name:"[Moon]", desc:"Add a description." },
+  { icon:"slide_tower.png", x:54.065, y:28.605, w:12.818, h:7.759, cat:"play", name:"[Slide]", desc:"Add a description." },
   { icon:"small_dock.png", x:34.564, y:11.285, w:9.825, h:6.074, cat:"play", name:"[Dock]", desc:"Add a description." },
   { icon:"mandala_wreath.png", x:87.88, y:11.755, w:10.574, h:6.975, cat:"sanctuary", name:"[Mandala]", desc:"Add a description." },
   { icon:"cream_tents_cluster.png", x:88.379, y:18.417, w:11.621, h:9.483, cat:"market", name:"[Market Tents]", desc:"Add a description." },
