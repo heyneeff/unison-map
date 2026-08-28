@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "unison-map-layout",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "kv_namespaces": [
+    { "binding": "MAP_KV", "id": "0ada8ab28dec4788803dc6eb3beb7c87" }
+  ]
+}

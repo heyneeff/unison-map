@@ -42,11 +42,16 @@
     margin:0 auto;
     background:#1c140c;
   }
-  #map-frame{
+  #map-viewport{
     position:relative;
     width:100%;
     aspect-ratio:1080/1456; /* locked to the background image's native size */
     overflow:hidden;
+  }
+  #map-frame{
+    position:absolute;
+    inset:0;
+    transition:transform .55s cubic-bezier(.22,.61,.36,1);
   }
   #map-frame img.bg{
     position:absolute;
@@ -372,7 +377,8 @@
   .header-btn:hover{ background:#2f2213ee; }
   .header-btn img{ height:1.6em; width:auto; object-fit:contain; flex-shrink:0; }
   /* map split into 5 columns: Stage Schedule centered in column 2, Carnival Schedule in column 4 */
-  .header-btn-left{ left:calc(30% - 0.5in); }
+  .header-btn-left{ left:calc(30% - 0.5in); top:calc(4.5% + 0.85in); }
+  .header-btn-center{ left:50%; }
   .header-btn-right{ left:calc(70% + 0.5in); }
 
   .carnival-wordmark{
@@ -386,6 +392,38 @@
   .modal-sched-list li{ display:flex; gap:8px; font-size:13px; color:var(--ink); margin-bottom:3px; }
   .modal-sched-list li .time{ font-weight:bold; color:var(--purple-dark); flex-shrink:0; min-width:82px; }
   .modal-sched-empty{ font-size:13px; color:#8a7a5a; font-style:italic; margin:0 0 8px; }
+
+  /* ---------- schedule overlay: translucent card floating over the (possibly
+     zoomed) map itself, rather than a full-screen opaque modal ---------- */
+  .schedule-overlay{
+    position:absolute; inset:0; z-index:40;
+    display:none; align-items:center; justify-content:center;
+    padding:6%;
+  }
+  .schedule-overlay.show{ display:flex; }
+  .schedule-overlay-card{
+    background:rgba(24,17,11,.66);
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+    border:2px solid var(--gold);
+    border-radius:14px;
+    max-width:420px; width:100%; max-height:100%;
+    padding:18px;
+    display:flex; flex-direction:column;
+    color:var(--parchment);
+    box-shadow:0 14px 36px rgba(0,0,0,.6);
+  }
+  .schedule-overlay-card h3{ margin:0 0 10px; text-align:center; color:var(--gold); font-size:18px; }
+  .schedule-overlay-card .modal-sched-group h4{ color:#f2dfa0; }
+  .schedule-overlay-card .modal-sched-list li{ color:#f5eeda; }
+  .schedule-overlay-card .modal-sched-list li .time{ color:#f2dfa0; }
+  .schedule-overlay-card .modal-sched-empty{ color:#d9cdb3; }
+  .schedule-overlay-card .carnival-wordmark{ filter:drop-shadow(0 2px 8px rgba(0,0,0,.6)); }
+  .schedule-overlay-card .modal-actions{ margin-top:12px; }
+  .schedule-overlay-card .schedule-row input.time-input,
+  .schedule-overlay-card .schedule-row input.title-input{
+    background:rgba(243,230,201,.92);
+  }
 
   /* ---------- map key: expandable section below the map ---------- */
   .key-section{
@@ -462,6 +500,7 @@
       <span id="rotate-readout">0°</span>
     </div>
     <span class="sel-info" id="sel-info">Drag an icon to move it. Drag its white dot to resize.</span>
+    <span class="sel-info" id="sync-status"></span>
   </div>
   <div class="edit-fields" id="edit-fields">
     <label>Name<input type="text" id="field-name" placeholder="Location name"></label>
@@ -476,15 +515,50 @@
 </div>
 
 <div id="map-wrap">
-  <div id="map-frame">
-    <img class="bg" src="bg.jpg" alt="Unison site map">
-    <!-- hotspots + decor injected by JS -->
+  <div id="map-viewport">
+    <div id="map-frame">
+      <img class="bg" src="bg.jpg" alt="Unison site map">
+      <!-- hotspots + decor injected by JS -->
+    </div>
   </div>
 
   <button class="header-btn header-btn-left" id="btn-stage-schedule">Stage Schedule</button>
+  <button class="header-btn header-btn-center" id="btn-artist-lineup">Artist Lineup</button>
   <button class="header-btn header-btn-right" id="btn-carnival-schedule">
     <img src="icons/carnival-emblem.png" alt="">Carnival Schedule
   </button>
+
+  <div class="schedule-overlay" id="stage-schedule-overlay">
+    <div class="schedule-overlay-card">
+      <h3>Stage Schedule</h3>
+      <div class="modal-sched-scroll" id="stage-schedule-content"></div>
+      <div class="modal-actions">
+        <button id="btn-close-stage-schedule">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="schedule-overlay" id="artist-lineup-overlay">
+    <div class="schedule-overlay-card">
+      <h3>Artist Lineup</h3>
+      <div class="modal-sched-scroll" id="artist-lineup-content"></div>
+      <div class="modal-actions">
+        <button id="btn-add-artist" class="edit-only-btn" style="display:none; margin-right:auto;">+ Add artist</button>
+        <button id="btn-close-artist-lineup">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="schedule-overlay" id="carnival-schedule-overlay">
+    <div class="schedule-overlay-card">
+      <img class="carnival-wordmark" src="icons/carnival-wordmark.png" alt="Carnival Society">
+      <div class="modal-sched-scroll" id="carnival-schedule-content"></div>
+      <div class="modal-actions">
+        <button id="btn-add-carnival-event" class="edit-only-btn" style="display:none; margin-right:auto;">+ Add event</button>
+        <button id="btn-close-carnival-schedule">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="key-section">
@@ -515,27 +589,6 @@
     <div class="modal-actions">
       <button id="btn-refresh-library">Refresh</button>
       <button id="btn-close-library">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="stage-schedule-modal">
-  <div class="modal">
-    <h3>Stage Schedule</h3>
-    <div class="modal-sched-scroll" id="stage-schedule-content"></div>
-    <div class="modal-actions">
-      <button id="btn-close-stage-schedule">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="carnival-schedule-modal">
-  <div class="modal">
-    <img class="carnival-wordmark" src="icons/carnival-wordmark.png" alt="Carnival Society">
-    <div class="modal-sched-scroll" id="carnival-schedule-content"></div>
-    <div class="modal-actions">
-      <button id="btn-add-carnival-event" class="edit-only-btn" style="display:none; margin-right:auto;">+ Add event</button>
-      <button id="btn-close-carnival-schedule">Close</button>
     </div>
   </div>
 </div>
@@ -598,6 +651,12 @@ const CARNIVAL_SCHEDULE = [
   // { time:"6:00 PM", title:"Opening Circle" },
 ];
 
+/* Shown by the "Artist Lineup" header button. EDIT ME, or add/remove
+   entries live via the ?edit toolbar. */
+const ARTISTS = [
+  // { name:"Artist Name" },
+];
+
 const CAT_ORDER = ["stage","market","sanctuary","play","amenity"];
 const CAT_LABELS = {
   market:"Market & Food", stage:"Stage & Performance", play:"Play",
@@ -626,47 +685,105 @@ let selected = null; // currently selected element in edit mode, for resize/rota
 function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 
 /* ============================================================
-   Persistence: dragged/resized/rotated positions are saved to this
-   browser's localStorage automatically, so they survive a reload
-   on this device. That does NOT push the change to other visitors
-   — for that, use "Export layout" in the ?edit toolbar and paste
-   the result over the LOCATIONS / DECOR arrays above, then publish.
+   Persistence: edits (drag/resize/add/delete/rename/schedules) save to
+   this browser's localStorage instantly, AND are pushed to a small
+   shared Worker (MAP_API below) so every visitor — including mobile —
+   sees the same map without a manual export/paste step. Pushing to the
+   Worker requires the edit password (prompted once, then remembered on
+   this device). "Export layout" in the toolbar remains as a manual
+   backup path if the Worker is ever unreachable.
    ============================================================ */
 const STORAGE_KEY = "unisonMapLayout_v2";
+const MAP_API = "https://unison-map-layout.heyneeff.workers.dev";
+const EDIT_PW_KEY = "unisonMapEditPw";
 
 function loadSavedLayout(){
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); }
   catch(err){ return null; }
 }
-function saveLayout(){
+function setSyncStatus(text){
+  const el = document.getElementById("sync-status");
+  if (el) el.textContent = text;
+}
+function applyLayoutData(data){
+  if (!data || typeof data !== "object") return;
+  if (Array.isArray(data.locations) && data.locations.length){
+    LOCATIONS.length = 0;
+    data.locations.forEach(l => LOCATIONS.push(l));
+  }
+  LOCATIONS.forEach((loc, i) => { loc._id = i; });
+  if (data.decor){
+    DECOR.forEach(d => {
+      const s = data.decor[d.id];
+      if (s) Object.assign(d, s);
+    });
+  }
+  if (Array.isArray(data.carnivalSchedule)){
+    CARNIVAL_SCHEDULE.length = 0;
+    data.carnivalSchedule.forEach(ev => CARNIVAL_SCHEDULE.push(ev));
+  }
+  if (Array.isArray(data.artists)){
+    ARTISTS.length = 0;
+    data.artists.forEach(a => ARTISTS.push(a));
+  }
+}
+function collectLayoutData(){
   const data = {
     locations: LOCATIONS.map(l => ({ icon:l.icon, x:l.x, y:l.y, w:l.w, h:l.h, cat:l.cat, name:l.name, desc:l.desc, autoKey: !!l.autoKey, schedule: l.schedule || [] })),
     decor: {},
-    carnivalSchedule: CARNIVAL_SCHEDULE
+    carnivalSchedule: CARNIVAL_SCHEDULE,
+    artists: ARTISTS
   };
   DECOR.forEach(d => { data.decor[d.id] = { x:d.x, y:d.y, w:d.w, h:d.h, rot:d.rot||0 }; });
+  return data;
+}
+async function pushToRemote(data){
+  let pw = null;
+  try { pw = localStorage.getItem(EDIT_PW_KEY); } catch(err){}
+  if (!pw){
+    pw = prompt("Edit password (saves this change for every visitor):");
+    if (!pw) { setSyncStatus("Saved on this device only (no password entered)."); return; }
+    try { localStorage.setItem(EDIT_PW_KEY, pw); } catch(err){}
+  }
+  setSyncStatus("Saving…");
+  try {
+    const res = await fetch(`${MAP_API}/layout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Edit-Password": pw },
+      body: JSON.stringify(data)
+    });
+    if (res.status === 401){
+      try { localStorage.removeItem(EDIT_PW_KEY); } catch(err){}
+      setSyncStatus("Wrong password — saved on this device only.");
+      return;
+    }
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    setSyncStatus("Saved for everyone.");
+  } catch(err){
+    setSyncStatus("Couldn't reach the server — saved on this device only.");
+  }
+}
+function saveLayout(){
+  const data = collectLayoutData();
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(err){}
+  pushToRemote(data);
+}
+async function fetchRemoteLayout(){
+  try {
+    const res = await fetch(`${MAP_API}/layout`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(err){ return null; }
 }
 
 // A saved layout (from previous drag/resize/rename/add/delete edits in THIS
 // browser) fully replaces the built-in LOCATIONS list below, so add/delete
-// persist across reloads just like position and text do.
+// persist across reloads just like position and text do. This renders
+// instantly from local cache; the shared version from the Worker (which
+// reflects every visitor's edits, not just this device's) is fetched and
+// swapped in right after, once it arrives.
 const savedLayout = loadSavedLayout();
-if (savedLayout && Array.isArray(savedLayout.locations) && savedLayout.locations.length){
-  LOCATIONS.length = 0;
-  savedLayout.locations.forEach(l => LOCATIONS.push(l));
-}
-LOCATIONS.forEach((loc, i) => { loc._id = i; });
-if (savedLayout && savedLayout.decor){
-  DECOR.forEach(d => {
-    const s = savedLayout.decor[d.id];
-    if (s) Object.assign(d, s);
-  });
-}
-if (savedLayout && Array.isArray(savedLayout.carnivalSchedule)){
-  CARNIVAL_SCHEDULE.length = 0;
-  savedLayout.carnivalSchedule.forEach(ev => CARNIVAL_SCHEDULE.push(ev));
-}
+applyLayoutData(savedLayout);
 
 function attachDragResize(el, data, opts){
   const handle = el.querySelector(".resize-handle");
@@ -896,6 +1013,7 @@ function autoKeyWhiteBg(imgEl){
 }
 
 function buildHotspots(){
+  frame.querySelectorAll(".hotspot").forEach(el => el.remove());
   LOCATIONS.forEach((loc, i) => {
     loc._id = i;
     const hs = document.createElement("div");
@@ -949,22 +1067,39 @@ document.addEventListener("click", (e) => {
 });
 
 // ---- build decor (arrow, logo) ----
-DECOR.forEach((d) => {
-  const el = document.createElement("div");
-  el.className = `decor deco-${d.id}` + (d.id === "logo" ? " logo-anim" : "");
-  el.style.left = d.x + "%";
-  el.style.top = d.y + "%";
-  el.style.width = d.w + "%";
-  el.style.height = d.h + "%";
-  el.innerHTML = `
-    <div class="ring"></div>
-    <div class="edit-outline"></div>
-    <img class="piece" src="icons/${d.icon}" alt="" style="transform:${d.flip ? "scaleX(-1) " : ""}rotate(${d.rot||0}deg);">
-    <div class="resize-handle"></div>
-  `;
-  frame.appendChild(el);
-  attachDragResize(el, d, { rotatable: d.id === "arrow", label: d.id, flip: !!d.flip });
-});
+function buildDecor(){
+  frame.querySelectorAll(".decor").forEach(el => el.remove());
+  DECOR.forEach((d) => {
+    const el = document.createElement("div");
+    el.className = `decor deco-${d.id}` + (d.id === "logo" ? " logo-anim" : "");
+    el.style.left = d.x + "%";
+    el.style.top = d.y + "%";
+    el.style.width = d.w + "%";
+    el.style.height = d.h + "%";
+    el.innerHTML = `
+      <div class="ring"></div>
+      <div class="edit-outline"></div>
+      <img class="piece" src="icons/${d.icon}" alt="" style="transform:${d.flip ? "scaleX(-1) " : ""}rotate(${d.rot||0}deg);">
+      <div class="resize-handle"></div>
+    `;
+    frame.appendChild(el);
+    attachDragResize(el, d, { rotatable: d.id === "arrow", label: d.id, flip: !!d.flip });
+  });
+}
+buildDecor();
+
+// Fetch the shared layout from the Worker and swap it in once it arrives,
+// so this device picks up edits made from any other device (this is what
+// makes newly-added pins/icons show up on mobile without a manual export).
+(async function syncFromRemote(){
+  const remote = await fetchRemoteLayout();
+  if (!remote) return;
+  applyLayoutData(remote);
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)); } catch(err){}
+  buildHotspots();
+  buildDecor();
+  if (typeof buildKeyPanel === "function") buildKeyPanel();
+})();
 
 // ---- toolbar wiring ----
 document.getElementById("btn-toggle-edit").addEventListener("click", (e) => {
@@ -975,6 +1110,7 @@ document.getElementById("btn-toggle-edit").addEventListener("click", (e) => {
   document.getElementById("edit-fields").classList.remove("show");
   document.getElementById("rotate-box").classList.remove("show");
   selected = null;
+  resetZoom();
 });
 frame.addEventListener("click", (e) => {
   if (!document.body.classList.contains("editing")) return;
@@ -1009,6 +1145,10 @@ document.getElementById("btn-export").addEventListener("click", () => {
   out += "];\n\n// ---- replace the existing `const CARNIVAL_SCHEDULE = [ ... ];` block with this ----\nconst CARNIVAL_SCHEDULE = [\n";
   CARNIVAL_SCHEDULE.forEach(ev => {
     out += `  { time:"${(ev.time||"").replace(/"/g,'\\"')}", title:"${(ev.title||"").replace(/"/g,'\\"')}" },\n`;
+  });
+  out += "];\n\n// ---- replace the existing `const ARTISTS = [ ... ];` block with this ----\nconst ARTISTS = [\n";
+  ARTISTS.forEach(a => {
+    out += `  { name:"${(a.name||"").replace(/"/g,'\\"')}" },\n`;
   });
   out += "];\n";
   document.getElementById("export-text").value = out;
@@ -1141,7 +1281,32 @@ document.getElementById("btn-close-library").addEventListener("click", () => {
   libraryModal.classList.remove("show");
 });
 
+// ---- zoom: pans/scales the map so a given point (in % of the frame) lands
+// centered in the viewport, used when a schedule opens over its map area.
+let zoomActive = null; // {x, y, scale} while zoomed, else null
+function zoomTo(xPct, yPct, scale){
+  const viewport = document.getElementById("map-viewport");
+  const frameEl = document.getElementById("map-frame");
+  const rect = viewport.getBoundingClientRect();
+  const targetX = rect.width * xPct / 100;
+  const targetY = rect.height * yPct / 100;
+  const tx = (rect.width / 2) / scale - targetX;
+  const ty = (rect.height / 2) / scale - targetY;
+  frameEl.style.transformOrigin = "0 0";
+  frameEl.style.transform = `scale(${scale}) translate(${tx}px, ${ty}px)`;
+  zoomActive = { x:xPct, y:yPct, scale };
+}
+function resetZoom(){
+  document.getElementById("map-frame").style.transform = "scale(1)";
+  zoomActive = null;
+}
+window.addEventListener("resize", () => {
+  if (zoomActive) zoomTo(zoomActive.x, zoomActive.y, zoomActive.scale);
+});
+
 // ---- Stage Schedule (auto-built from every "stage" pin's own schedule) ----
+const STAGE_ZOOM = { x:68.25, y:60.54, scale:2.2 }; // Main Stage
+
 function renderStageSchedule(){
   const el = document.getElementById("stage-schedule-content");
   const stagePins = LOCATIONS.filter(l => l.cat === "stage");
@@ -1161,13 +1326,61 @@ function renderStageSchedule(){
 }
 document.getElementById("btn-stage-schedule").addEventListener("click", () => {
   renderStageSchedule();
-  document.getElementById("stage-schedule-modal").classList.add("show");
+  zoomTo(STAGE_ZOOM.x, STAGE_ZOOM.y, STAGE_ZOOM.scale);
+  document.getElementById("stage-schedule-overlay").classList.add("show");
 });
 document.getElementById("btn-close-stage-schedule").addEventListener("click", () => {
-  document.getElementById("stage-schedule-modal").classList.remove("show");
+  document.getElementById("stage-schedule-overlay").classList.remove("show");
+  resetZoom();
+});
+
+// ---- Artist Lineup (its own name list, not tied to a pin, no zoom target) ----
+function renderArtistLineup(){
+  const el = document.getElementById("artist-lineup-content");
+  const addBtn = document.getElementById("btn-add-artist");
+  const editing = document.body.classList.contains("editing");
+  addBtn.style.display = editing ? "inline-block" : "none";
+  if (!editing){
+    el.innerHTML = ARTISTS.length
+      ? `<ul class="modal-sched-list">${ARTISTS.map(a => `<li>${escapeHtml(a.name)}</li>`).join("")}</ul>`
+      : `<p class="modal-sched-empty">No artists announced yet.</p>`;
+    return;
+  }
+  el.innerHTML = "";
+  if (!ARTISTS.length){
+    el.innerHTML = `<p class="modal-sched-empty">No artists yet — add one below.</p>`;
+  }
+  ARTISTS.forEach((a, idx) => {
+    const row = document.createElement("div");
+    row.className = "schedule-row";
+    row.innerHTML = `<input type="text" class="title-input" placeholder="Artist name"><button type="button">Remove</button>`;
+    const nameInput = row.querySelector(".title-input");
+    nameInput.value = a.name || "";
+    nameInput.addEventListener("input", () => { a.name = nameInput.value; saveLayout(); });
+    row.querySelector("button").addEventListener("click", () => {
+      ARTISTS.splice(idx, 1);
+      renderArtistLineup();
+      saveLayout();
+    });
+    el.appendChild(row);
+  });
+}
+document.getElementById("btn-add-artist").addEventListener("click", () => {
+  ARTISTS.push({ name:"" });
+  renderArtistLineup();
+  saveLayout();
+});
+document.getElementById("btn-artist-lineup").addEventListener("click", () => {
+  renderArtistLineup();
+  document.getElementById("artist-lineup-overlay").classList.add("show");
+});
+document.getElementById("btn-close-artist-lineup").addEventListener("click", () => {
+  document.getElementById("artist-lineup-overlay").classList.remove("show");
 });
 
 // ---- Carnival Schedule (its own event list, not tied to a pin) ----
+const CARNIVAL_ZOOM = { x:57.95, y:32.03, scale:2.2 }; // Big Top tent
+
 function renderCarnivalSchedule(){
   const el = document.getElementById("carnival-schedule-content");
   const addBtn = document.getElementById("btn-add-carnival-event");
@@ -1212,10 +1425,12 @@ document.getElementById("btn-add-carnival-event").addEventListener("click", () =
 });
 document.getElementById("btn-carnival-schedule").addEventListener("click", () => {
   renderCarnivalSchedule();
-  document.getElementById("carnival-schedule-modal").classList.add("show");
+  zoomTo(CARNIVAL_ZOOM.x, CARNIVAL_ZOOM.y, CARNIVAL_ZOOM.scale);
+  document.getElementById("carnival-schedule-overlay").classList.add("show");
 });
 document.getElementById("btn-close-carnival-schedule").addEventListener("click", () => {
-  document.getElementById("carnival-schedule-modal").classList.remove("show");
+  document.getElementById("carnival-schedule-overlay").classList.remove("show");
+  resetZoom();
 });
 
 document.getElementById("btn-delete-pin").addEventListener("click", () => {
