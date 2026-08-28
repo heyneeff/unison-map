@@ -352,6 +352,8 @@
     <button id="btn-toggle-edit">Editing: Off</button>
     <button id="btn-reset">Reload (keep saved layout)</button>
     <button id="btn-clear">Clear saved layout</button>
+    <button id="btn-add-pin">+ Add pin</button>
+    <button id="btn-delete-pin">Delete selected pin</button>
     <button id="btn-export" class="primary">Export layout</button>
     <div class="rotate-box" id="rotate-box">
       <label>Rotate: <input type="range" id="rotate-slider" min="0" max="359" value="0"></label>
@@ -465,29 +467,36 @@ function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
    — for that, use "Export layout" in the ?edit toolbar and paste
    the result over the LOCATIONS / DECOR arrays above, then publish.
    ============================================================ */
-const STORAGE_KEY = "unisonMapLayout_v1";
+const STORAGE_KEY = "unisonMapLayout_v2";
 
 function loadSavedLayout(){
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
-  catch(err){ return {}; }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); }
+  catch(err){ return null; }
 }
 function saveLayout(){
-  const data = { locations:{}, decor:{} };
-  LOCATIONS.forEach(l => { data.locations[l._id] = { x:l.x, y:l.y, w:l.w, h:l.h, name:l.name, desc:l.desc }; });
+  const data = {
+    locations: LOCATIONS.map(l => ({ icon:l.icon, x:l.x, y:l.y, w:l.w, h:l.h, cat:l.cat, name:l.name, desc:l.desc })),
+    decor: {}
+  };
   DECOR.forEach(d => { data.decor[d.id] = { x:d.x, y:d.y, w:d.w, h:d.h, rot:d.rot||0 }; });
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(err){}
 }
 
-LOCATIONS.forEach((loc, i) => { loc._id = i; });
+// A saved layout (from previous drag/resize/rename/add/delete edits in THIS
+// browser) fully replaces the built-in LOCATIONS list below, so add/delete
+// persist across reloads just like position and text do.
 const savedLayout = loadSavedLayout();
-LOCATIONS.forEach(loc => {
-  const s = savedLayout.locations && savedLayout.locations[loc._id];
-  if (s) Object.assign(loc, s);
-});
-DECOR.forEach(d => {
-  const s = savedLayout.decor && savedLayout.decor[d.id];
-  if (s) Object.assign(d, s);
-});
+if (savedLayout && Array.isArray(savedLayout.locations) && savedLayout.locations.length){
+  LOCATIONS.length = 0;
+  savedLayout.locations.forEach(l => LOCATIONS.push(l));
+}
+LOCATIONS.forEach((loc, i) => { loc._id = i; });
+if (savedLayout && savedLayout.decor){
+  DECOR.forEach(d => {
+    const s = savedLayout.decor[d.id];
+    if (s) Object.assign(d, s);
+  });
+}
 
 function attachDragResize(el, data, opts){
   const handle = el.querySelector(".resize-handle");
@@ -618,45 +627,49 @@ document.getElementById("rotate-slider").addEventListener("change", () => {
 });
 
 // ---- build hotspots ----
-LOCATIONS.forEach((loc, i) => {
-  const hs = document.createElement("div");
-  hs.className = `hotspot cat-${loc.cat}`;
-  hs.dataset.id = i;
-  hs.style.left = loc.x + "%";
-  hs.style.top = loc.y + "%";
-  hs.style.width = loc.w + "%";
-  hs.style.height = loc.h + "%";
-  if (loc.cat === "stage") {
-    // wider, less regular spread + slightly varied speed so the stage icons
-    // read as independently "dancing to the music" rather than in lockstep
-    hs.style.setProperty("--bump-delay", ((i * 0.83) % 2.6) + "s");
-    hs.style.setProperty("--bump-dur", (1.1 + ((i * 0.37) % 0.6)) + "s");
-  } else {
-    hs.style.setProperty("--bump-delay", ((i * 0.37) % 1.7) + "s");
-  }
+function buildHotspots(){
+  LOCATIONS.forEach((loc, i) => {
+    loc._id = i;
+    const hs = document.createElement("div");
+    hs.className = `hotspot cat-${loc.cat}`;
+    hs.dataset.id = i;
+    hs.style.left = loc.x + "%";
+    hs.style.top = loc.y + "%";
+    hs.style.width = loc.w + "%";
+    hs.style.height = loc.h + "%";
+    if (loc.cat === "stage") {
+      // wider, less regular spread + slightly varied speed so the stage icons
+      // read as independently "dancing to the music" rather than in lockstep
+      hs.style.setProperty("--bump-delay", ((i * 0.83) % 2.6) + "s");
+      hs.style.setProperty("--bump-dur", (1.1 + ((i * 0.37) % 0.6)) + "s");
+    } else {
+      hs.style.setProperty("--bump-delay", ((i * 0.37) % 1.7) + "s");
+    }
 
-  hs.innerHTML = `
-    <div class="ring"></div>
-    <div class="edit-outline"></div>
-    <img class="piece" src="icons/${loc.icon}" alt="${loc.name}">
-    <div class="card">
-      <h3>${loc.name}</h3>
-      <p>${loc.desc}</p>
-      <span class="cat-label">${CAT_LABELS[loc.cat]}</span>
-    </div>
-    <div class="resize-handle"></div>
-  `;
+    hs.innerHTML = `
+      <div class="ring"></div>
+      <div class="edit-outline"></div>
+      <img class="piece" src="icons/${loc.icon}" alt="${loc.name}">
+      <div class="card">
+        <h3>${loc.name}</h3>
+        <p>${loc.desc}</p>
+        <span class="cat-label">${CAT_LABELS[loc.cat]}</span>
+      </div>
+      <div class="resize-handle"></div>
+    `;
 
-  hs.addEventListener("click", (e) => {
-    if (document.body.classList.contains("editing")) return;
-    const isActive = hs.classList.contains("active");
-    document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
-    if (!isActive) hs.classList.add("active");
+    hs.addEventListener("click", (e) => {
+      if (document.body.classList.contains("editing")) return;
+      const isActive = hs.classList.contains("active");
+      document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
+      if (!isActive) hs.classList.add("active");
+    });
+
+    frame.appendChild(hs);
+    attachDragResize(hs, loc, { rotatable:false, label:loc.name, isLocation:true });
   });
-
-  frame.appendChild(hs);
-  attachDragResize(hs, loc, { rotatable:false, label:loc.name, isLocation:true });
-});
+}
+buildHotspots();
 
 document.addEventListener("click", (e) => {
   if (document.body.classList.contains("editing")) return;
@@ -743,40 +756,74 @@ keyToggleBtn.addEventListener("click", (e) => {
   keyPanelEl.classList.contains("open") ? closeKeyPanel() : openKeyPanel();
 });
 const keyGroupsEl = document.getElementById("key-groups");
-CAT_ORDER.forEach(cat => {
-  const items = LOCATIONS.filter(l => l.cat === cat);
-  if (!items.length) return;
-  const group = document.createElement("div");
-  group.className = "key-group";
-  group.innerHTML = `<div class="key-group-title cat-${cat}"><i></i>${CAT_LABELS[cat]}</div>`;
-  const list = document.createElement("div");
-  list.className = "key-list";
-  items.forEach(loc => {
-    const btn = document.createElement("button");
-    btn.className = "key-item";
-    btn.dataset.id = loc._id;
-    btn.innerHTML = `<img src="icons/${loc.icon}" alt=""><span>${loc.name}</span>`;
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const hs = frame.querySelector(`.hotspot[data-id="${loc._id}"]`);
-      if (!hs) return;
-      document.getElementById("map-wrap").scrollIntoView({ behavior:"smooth", block:"center" });
-      document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
-      hs.classList.add("active");
-      hs.classList.remove("flash"); void hs.offsetWidth; hs.classList.add("flash");
-      setTimeout(() => hs.classList.remove("flash"), 2300);
+const CAT_SWATCH = { market:"var(--gold)", stage:"var(--crimson)", play:"var(--teal)", sanctuary:"var(--purple)", amenity:"var(--green)" };
+
+function buildKeyPanel(){
+  keyGroupsEl.innerHTML = "";
+  CAT_ORDER.forEach(cat => {
+    const items = LOCATIONS.filter(l => l.cat === cat);
+    if (!items.length) return;
+    const group = document.createElement("div");
+    group.className = "key-group";
+    group.innerHTML = `<div class="key-group-title cat-${cat}"><i style="background:${CAT_SWATCH[cat]||'#999'}"></i>${CAT_LABELS[cat]}</div>`;
+    const list = document.createElement("div");
+    list.className = "key-list";
+    items.forEach(loc => {
+      const btn = document.createElement("button");
+      btn.className = "key-item";
+      btn.dataset.id = loc._id;
+      btn.innerHTML = `<img src="icons/${loc.icon}" alt=""><span>${loc.name}</span>`;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const hs = frame.querySelector(`.hotspot[data-id="${loc._id}"]`);
+        if (!hs) return;
+        document.getElementById("map-wrap").scrollIntoView({ behavior:"smooth", block:"center" });
+        document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
+        hs.classList.add("active");
+        hs.classList.remove("flash"); void hs.offsetWidth; hs.classList.add("flash");
+        setTimeout(() => hs.classList.remove("flash"), 2300);
+      });
+      list.appendChild(btn);
     });
-    list.appendChild(btn);
+    group.appendChild(list);
+    keyGroupsEl.appendChild(group);
   });
-  group.appendChild(list);
-  keyGroupsEl.appendChild(group);
+}
+buildKeyPanel();
+
+// ---- add / delete pins ----
+function rebuildMap(){
+  frame.querySelectorAll(".hotspot").forEach(el => el.remove());
+  buildHotspots();
+  buildKeyPanel();
+  saveLayout();
+}
+
+document.getElementById("btn-add-pin").addEventListener("click", () => {
+  const icon = prompt("Icon filename already uploaded to the icons/ folder (e.g. my-new-icon.png):");
+  if (!icon || !icon.trim()) return;
+  const name = prompt("Name for this location:", "[New Location]") || "[New Location]";
+  const catInput = prompt(`Category — one of: ${CAT_ORDER.join(", ")}`, "sanctuary");
+  const cat = CAT_ORDER.includes((catInput||"").trim()) ? catInput.trim() : "sanctuary";
+  const newLoc = { icon:icon.trim(), x:45, y:45, w:8, h:8, cat, name, desc:"Add a description." };
+  LOCATIONS.push(newLoc);
+  rebuildMap();
+  const newEl = frame.querySelector(`.hotspot[data-id="${newLoc._id}"]`);
+  if (newEl) selectElement(newEl, newLoc, { rotatable:false, label:newLoc.name, isLocation:true });
 });
 
-// key group title swatch colors (reuses .ring color vars via border, simplest: inline)
-document.querySelectorAll(".key-group-title i").forEach(i => {
-  const cat = i.parentElement.className.match(/cat-(\w+)/)[1];
-  const colors = { market:"var(--gold)", stage:"var(--crimson)", play:"var(--teal)", sanctuary:"var(--purple)", amenity:"var(--green)" };
-  i.style.background = colors[cat] || "#999";
+document.getElementById("btn-delete-pin").addEventListener("click", () => {
+  if (!selected || !selected.opts.isLocation) {
+    alert("Select a pin on the map first (click it while Editing is On), then click Delete.");
+    return;
+  }
+  if (!confirm(`Delete "${selected.data.name}"? This can't be undone unless you Reload without saving.`)) return;
+  const idx = LOCATIONS.indexOf(selected.data);
+  if (idx > -1) LOCATIONS.splice(idx, 1);
+  selected = null;
+  document.getElementById("edit-fields").classList.remove("show");
+  document.getElementById("rotate-box").classList.remove("show");
+  rebuildMap();
 });
 </script>
 
