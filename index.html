@@ -352,7 +352,7 @@
   /* ---------- header schedule buttons ---------- */
   .header-btn{
     position:absolute;
-    top:4.5%;
+    top:calc(4.5% + 0.5in);
     transform:translateX(-50%);
     z-index:8;
     display:flex; align-items:center; gap:7px;
@@ -372,8 +372,8 @@
   .header-btn:hover{ background:#2f2213ee; }
   .header-btn img{ height:1.6em; width:auto; object-fit:contain; flex-shrink:0; }
   /* map split into 5 columns: Stage Schedule centered in column 2, Carnival Schedule in column 4 */
-  .header-btn-left{ left:30%; }
-  .header-btn-right{ left:70%; }
+  .header-btn-left{ left:calc(30% - 0.5in); }
+  .header-btn-right{ left:calc(70% + 0.5in); }
 
   .carnival-wordmark{
     display:block; max-width:280px; width:70%; margin:0 auto 12px;
