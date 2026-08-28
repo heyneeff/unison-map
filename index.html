@@ -349,6 +349,42 @@
   }
   .library-status{ font-size:13px; color:var(--ink); padding:8px; grid-column:1/-1; }
 
+  /* ---------- header schedule buttons ---------- */
+  .header-btn{
+    position:absolute;
+    top:2%;
+    z-index:8;
+    display:flex; align-items:center; gap:7px;
+    background:#241a10ee;
+    color:var(--parchment);
+    border:2px solid var(--gold);
+    border-radius:999px;
+    padding:6px 14px;
+    font-family:Georgia,serif;
+    font-size:clamp(9px,2vw,13px);
+    font-weight:bold;
+    letter-spacing:.02em;
+    cursor:pointer;
+    box-shadow:0 3px 10px rgba(0,0,0,.5);
+    white-space:nowrap;
+  }
+  .header-btn:hover{ background:#2f2213ee; }
+  .header-btn img{ height:1.6em; width:auto; object-fit:contain; flex-shrink:0; }
+  .header-btn-left{ left:2%; }
+  .header-btn-right{ right:2%; }
+
+  .carnival-wordmark{
+    display:block; max-width:280px; width:70%; margin:0 auto 12px;
+  }
+  .modal-sched-scroll{ flex:1; overflow-y:auto; padding-right:4px; }
+  .modal-sched-group{ margin-bottom:14px; }
+  .modal-sched-group:last-child{ margin-bottom:0; }
+  .modal-sched-group h4{ margin:0 0 4px; color:var(--purple-dark); font-size:14px; }
+  .modal-sched-list{ margin:0 0 4px; padding:0; list-style:none; }
+  .modal-sched-list li{ display:flex; gap:8px; font-size:13px; color:var(--ink); margin-bottom:3px; }
+  .modal-sched-list li .time{ font-weight:bold; color:var(--purple-dark); flex-shrink:0; min-width:82px; }
+  .modal-sched-empty{ font-size:13px; color:#8a7a5a; font-style:italic; margin:0 0 8px; }
+
   /* ---------- map key: expandable section below the map ---------- */
   .key-section{
     max-width:1100px;
@@ -442,6 +478,11 @@
     <img class="bg" src="bg.jpg" alt="Unison site map">
     <!-- hotspots + decor injected by JS -->
   </div>
+
+  <button class="header-btn header-btn-left" id="btn-stage-schedule">Stage Schedule</button>
+  <button class="header-btn header-btn-right" id="btn-carnival-schedule">
+    <img src="icons/carnival-emblem.png" alt="">Carnival Schedule
+  </button>
 </div>
 
 <div class="key-section">
@@ -472,6 +513,27 @@
     <div class="modal-actions">
       <button id="btn-refresh-library">Refresh</button>
       <button id="btn-close-library">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="stage-schedule-modal">
+  <div class="modal">
+    <h3>Stage Schedule</h3>
+    <div class="modal-sched-scroll" id="stage-schedule-content"></div>
+    <div class="modal-actions">
+      <button id="btn-close-stage-schedule">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="carnival-schedule-modal">
+  <div class="modal">
+    <img class="carnival-wordmark" src="icons/carnival-wordmark.png" alt="Carnival Society">
+    <div class="modal-sched-scroll" id="carnival-schedule-content"></div>
+    <div class="modal-actions">
+      <button id="btn-add-carnival-event" class="edit-only-btn" style="display:none; margin-right:auto;">+ Add event</button>
+      <button id="btn-close-carnival-schedule">Close</button>
     </div>
   </div>
 </div>
@@ -527,6 +589,13 @@ const DECOR = [
   { id:"logo",  icon:"wordmark.png",  x:34.57, y:5.2, w:30.86, h:11, rot:0 },
 ];
 
+/* Carnival-wide schedule shown by the "Carnival Schedule" header button —
+   independent of any single pin (workshops, ceremonies, whole-event stuff).
+   EDIT ME, or add/remove entries live via the ?edit toolbar. */
+const CARNIVAL_SCHEDULE = [
+  // { time:"6:00 PM", title:"Opening Circle" },
+];
+
 const CAT_ORDER = ["stage","market","sanctuary","play","amenity"];
 const CAT_LABELS = {
   market:"Market & Food", stage:"Stage & Performance", play:"Play",
@@ -570,7 +639,8 @@ function loadSavedLayout(){
 function saveLayout(){
   const data = {
     locations: LOCATIONS.map(l => ({ icon:l.icon, x:l.x, y:l.y, w:l.w, h:l.h, cat:l.cat, name:l.name, desc:l.desc, autoKey: !!l.autoKey, schedule: l.schedule || [] })),
-    decor: {}
+    decor: {},
+    carnivalSchedule: CARNIVAL_SCHEDULE
   };
   DECOR.forEach(d => { data.decor[d.id] = { x:d.x, y:d.y, w:d.w, h:d.h, rot:d.rot||0 }; });
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(err){}
@@ -590,6 +660,10 @@ if (savedLayout && savedLayout.decor){
     const s = savedLayout.decor[d.id];
     if (s) Object.assign(d, s);
   });
+}
+if (savedLayout && Array.isArray(savedLayout.carnivalSchedule)){
+  CARNIVAL_SCHEDULE.length = 0;
+  savedLayout.carnivalSchedule.forEach(ev => CARNIVAL_SCHEDULE.push(ev));
 }
 
 function attachDragResize(el, data, opts){
@@ -930,6 +1004,10 @@ document.getElementById("btn-export").addEventListener("click", () => {
   DECOR.forEach(d => {
     out += `  { id:"${d.id}", icon:"${d.icon}", x:${fmt(d.x)}, y:${fmt(d.y)}, w:${fmt(d.w)}, h:${fmt(d.h)}, rot:${fmt(d.rot||0)}${d.flip ? ", flip:true" : ""} },\n`;
   });
+  out += "];\n\n// ---- replace the existing `const CARNIVAL_SCHEDULE = [ ... ];` block with this ----\nconst CARNIVAL_SCHEDULE = [\n";
+  CARNIVAL_SCHEDULE.forEach(ev => {
+    out += `  { time:"${(ev.time||"").replace(/"/g,'\\"')}", title:"${(ev.title||"").replace(/"/g,'\\"')}" },\n`;
+  });
   out += "];\n";
   document.getElementById("export-text").value = out;
   document.getElementById("export-modal").classList.add("show");
@@ -1059,6 +1137,83 @@ document.getElementById("btn-icon-library").addEventListener("click", () => {
 document.getElementById("btn-refresh-library").addEventListener("click", () => loadIconLibrary(true));
 document.getElementById("btn-close-library").addEventListener("click", () => {
   libraryModal.classList.remove("show");
+});
+
+// ---- Stage Schedule (auto-built from every "stage" pin's own schedule) ----
+function renderStageSchedule(){
+  const el = document.getElementById("stage-schedule-content");
+  const stagePins = LOCATIONS.filter(l => l.cat === "stage");
+  if (!stagePins.length){
+    el.innerHTML = `<p class="modal-sched-empty">No stage locations on the map yet.</p>`;
+    return;
+  }
+  el.innerHTML = stagePins.map(loc => {
+    const sched = loc.schedule || [];
+    const body = sched.length
+      ? `<ul class="modal-sched-list">${sched.map(ev =>
+          `<li><span class="time">${escapeHtml(ev.time)}</span><span>${escapeHtml(ev.title)}</span></li>`
+        ).join("")}</ul>`
+      : `<p class="modal-sched-empty">No events scheduled yet.</p>`;
+    return `<div class="modal-sched-group"><h4>${escapeHtml(loc.name)}</h4>${body}</div>`;
+  }).join("");
+}
+document.getElementById("btn-stage-schedule").addEventListener("click", () => {
+  renderStageSchedule();
+  document.getElementById("stage-schedule-modal").classList.add("show");
+});
+document.getElementById("btn-close-stage-schedule").addEventListener("click", () => {
+  document.getElementById("stage-schedule-modal").classList.remove("show");
+});
+
+// ---- Carnival Schedule (its own event list, not tied to a pin) ----
+function renderCarnivalSchedule(){
+  const el = document.getElementById("carnival-schedule-content");
+  const addBtn = document.getElementById("btn-add-carnival-event");
+  const editing = document.body.classList.contains("editing");
+  addBtn.style.display = editing ? "inline-block" : "none";
+  if (!editing){
+    el.innerHTML = CARNIVAL_SCHEDULE.length
+      ? `<ul class="modal-sched-list">${CARNIVAL_SCHEDULE.map(ev =>
+          `<li><span class="time">${escapeHtml(ev.time)}</span><span>${escapeHtml(ev.title)}</span></li>`
+        ).join("")}</ul>`
+      : `<p class="modal-sched-empty">No events scheduled yet.</p>`;
+    return;
+  }
+  el.innerHTML = "";
+  if (!CARNIVAL_SCHEDULE.length){
+    el.innerHTML = `<p class="modal-sched-empty">No events yet — add one below.</p>`;
+  }
+  CARNIVAL_SCHEDULE.forEach((ev, idx) => {
+    const row = document.createElement("div");
+    row.className = "schedule-row";
+    row.innerHTML = `
+      <input type="text" class="time-input" placeholder="6:00 PM">
+      <input type="text" class="title-input" placeholder="Event title">
+      <button type="button">Remove</button>
+    `;
+    const t = row.querySelector(".time-input"), ti = row.querySelector(".title-input");
+    t.value = ev.time || ""; ti.value = ev.title || "";
+    t.addEventListener("input", () => { ev.time = t.value; saveLayout(); });
+    ti.addEventListener("input", () => { ev.title = ti.value; saveLayout(); });
+    row.querySelector("button").addEventListener("click", () => {
+      CARNIVAL_SCHEDULE.splice(idx, 1);
+      renderCarnivalSchedule();
+      saveLayout();
+    });
+    el.appendChild(row);
+  });
+}
+document.getElementById("btn-add-carnival-event").addEventListener("click", () => {
+  CARNIVAL_SCHEDULE.push({ time:"", title:"" });
+  renderCarnivalSchedule();
+  saveLayout();
+});
+document.getElementById("btn-carnival-schedule").addEventListener("click", () => {
+  renderCarnivalSchedule();
+  document.getElementById("carnival-schedule-modal").classList.add("show");
+});
+document.getElementById("btn-close-carnival-schedule").addEventListener("click", () => {
+  document.getElementById("carnival-schedule-modal").classList.remove("show");
 });
 
 document.getElementById("btn-delete-pin").addEventListener("click", () => {
