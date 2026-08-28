@@ -137,6 +137,20 @@
     display:block; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--gold); margin-top:5px; font-weight:bold;
   }
+  .card .schedule{
+    margin-top:7px; padding-top:6px; border-top:1px dashed #c9b98a;
+  }
+  .card .schedule h4{
+    margin:0 0 3px; font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--gold); font-weight:bold;
+  }
+  .card .schedule ul{ margin:0; padding:0; list-style:none; }
+  .card .schedule li{
+    display:flex; gap:6px; font-size:11.5px; line-height:1.4; color:var(--ink);
+  }
+  .card .schedule li .time{
+    font-weight:bold; color:var(--purple-dark); flex-shrink:0; white-space:nowrap;
+  }
 
   .logo-anim img.piece{ animation:logo-float 6s ease-in-out infinite; }
   @keyframes logo-float{
@@ -275,6 +289,32 @@
   }
   .edit-fields label.checkbox-label input{ padding:0; width:auto; }
 
+  .schedule-block{
+    flex:1 1 100%;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .schedule-block > .block-label{
+    font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:#cbb98a;
+  }
+  .schedule-rows{ display:flex; flex-direction:column; gap:5px; }
+  .schedule-row{ display:flex; gap:6px; align-items:center; }
+  .schedule-row input.time-input{
+    flex:0 0 110px;
+    font-family:Georgia,serif; font-size:13px; color:var(--ink);
+    background:var(--card-bg); border:1px solid #c9b98a; border-radius:6px; padding:5px 7px;
+  }
+  .schedule-row input.title-input{
+    flex:1;
+    font-family:Georgia,serif; font-size:13px; color:var(--ink);
+    background:var(--card-bg); border:1px solid #c9b98a; border-radius:6px; padding:5px 7px;
+  }
+  .schedule-row button{
+    flex:0 0 auto; background:var(--crimson); color:#fff; border:1px solid #7a2e28;
+    border-radius:6px; padding:4px 9px; cursor:pointer; font-size:12px;
+  }
+  .schedule-row button:hover{ filter:brightness(1.15); }
+  #btn-add-event{ align-self:flex-start; }
+
   .modal-backdrop{
     position:fixed; inset:0; background:rgba(0,0,0,.6);
     display:none; align-items:center; justify-content:center; z-index:100; padding:20px;
@@ -291,6 +331,23 @@
     padding:10px; border:1px solid #c9b98a; border-radius:6px; resize:vertical;
   }
   .modal .modal-actions{ display:flex; gap:10px; margin-top:10px; justify-content:flex-end; }
+
+  .library-grid{
+    flex:1; overflow-y:auto;
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(90px,1fr)); gap:10px;
+    min-height:120px; padding:4px;
+  }
+  .library-item{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:#f3e6c9; border:1px solid #c9b98a; border-radius:8px;
+    padding:8px 4px; cursor:pointer; text-align:center;
+  }
+  .library-item:hover{ border-color:var(--gold); background:#fff8e6; }
+  .library-item img{ width:52px; height:52px; object-fit:contain; }
+  .library-item span{
+    font-size:10px; color:var(--ink); word-break:break-all; line-height:1.2;
+  }
+  .library-status{ font-size:13px; color:var(--ink); padding:8px; grid-column:1/-1; }
 
   /* ---------- map key: expandable section below the map ---------- */
   .key-section{
@@ -359,6 +416,7 @@
     <button id="btn-clear">Clear saved layout</button>
     <button id="btn-upload-icon">Upload icon to GitHub &#8599;</button>
     <button id="btn-add-pin">+ Add pin</button>
+    <button id="btn-icon-library">Icon library</button>
     <button id="btn-delete-pin">Delete selected pin</button>
     <button id="btn-export" class="primary">Export layout</button>
     <div class="rotate-box" id="rotate-box">
@@ -371,6 +429,11 @@
     <label>Name<input type="text" id="field-name" placeholder="Location name"></label>
     <label>Description<textarea id="field-desc" placeholder="What's here?" rows="2"></textarea></label>
     <label class="checkbox-label"><input type="checkbox" id="field-autokey"> Remove white background automatically</label>
+    <div class="schedule-block">
+      <div class="block-label">Schedule of events (optional)</div>
+      <div class="schedule-rows" id="schedule-rows"></div>
+      <button type="button" id="btn-add-event">+ Add event</button>
+    </div>
   </div>
 </div>
 
@@ -397,6 +460,18 @@
     <div class="modal-actions">
       <button id="btn-copy">Copy to clipboard</button>
       <button id="btn-close-export">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="library-modal">
+  <div class="modal">
+    <h3>Icon library</h3>
+    <p style="margin:0 0 8px;font-size:13px;">Everything currently in the <code>icons/</code> folder on GitHub. Click one to add it as a new pin.</p>
+    <div class="library-grid" id="library-grid"></div>
+    <div class="modal-actions">
+      <button id="btn-refresh-library">Refresh</button>
+      <button id="btn-close-library">Close</button>
     </div>
   </div>
 </div>
@@ -458,6 +533,18 @@ const CAT_LABELS = {
   sanctuary:"Sanctuary & Art", amenity:"Amenities"
 };
 
+function escapeHtml(s){
+  return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function scheduleListHtml(loc){
+  const sched = loc.schedule || [];
+  if (!sched.length) return "";
+  const items = sched.map(ev =>
+    `<li><span class="time">${escapeHtml(ev.time)}</span><span>${escapeHtml(ev.title)}</span></li>`
+  ).join("");
+  return `<div class="schedule"><h4>Schedule</h4><ul>${items}</ul></div>`;
+}
+
 const frame = document.getElementById("map-frame");
 const params = new URLSearchParams(location.search);
 const editAvailable = params.has("edit");
@@ -482,7 +569,7 @@ function loadSavedLayout(){
 }
 function saveLayout(){
   const data = {
-    locations: LOCATIONS.map(l => ({ icon:l.icon, x:l.x, y:l.y, w:l.w, h:l.h, cat:l.cat, name:l.name, desc:l.desc, autoKey: !!l.autoKey })),
+    locations: LOCATIONS.map(l => ({ icon:l.icon, x:l.x, y:l.y, w:l.w, h:l.h, cat:l.cat, name:l.name, desc:l.desc, autoKey: !!l.autoKey, schedule: l.schedule || [] })),
     decor: {}
   };
   DECOR.forEach(d => { data.decor[d.id] = { x:d.x, y:d.y, w:d.w, h:d.h, rot:d.rot||0 }; });
@@ -593,11 +680,58 @@ function selectElement(el, data, opts){
     nameField.value = data.name;
     descField.value = data.desc;
     autoKeyField.checked = !!data.autoKey;
+    renderScheduleEditor();
   } else {
     fields.classList.remove("show");
+    document.getElementById("schedule-rows").innerHTML = "";
   }
   info.textContent = `Selected: ${opts.label || data.icon}`;
 }
+
+function refreshCardSchedule(){
+  if (!selected || !selected.opts.isLocation) return;
+  const cardEl = selected.el.querySelector(".card");
+  const existing = cardEl.querySelector(".schedule");
+  if (existing) existing.remove();
+  const html = scheduleListHtml(selected.data);
+  if (html) cardEl.querySelector(".cat-label").insertAdjacentHTML("beforebegin", html);
+  saveLayout();
+}
+
+function renderScheduleEditor(){
+  const container = document.getElementById("schedule-rows");
+  container.innerHTML = "";
+  if (!selected || !selected.opts.isLocation) return;
+  const sched = selected.data.schedule || [];
+  sched.forEach((ev, idx) => {
+    const row = document.createElement("div");
+    row.className = "schedule-row";
+    row.innerHTML = `
+      <input type="text" class="time-input" placeholder="6:00 PM">
+      <input type="text" class="title-input" placeholder="Event title">
+      <button type="button">Remove</button>
+    `;
+    const timeInput = row.querySelector(".time-input");
+    const titleInput = row.querySelector(".title-input");
+    timeInput.value = ev.time || "";
+    titleInput.value = ev.title || "";
+    timeInput.addEventListener("input", () => { ev.time = timeInput.value; refreshCardSchedule(); });
+    titleInput.addEventListener("input", () => { ev.title = titleInput.value; refreshCardSchedule(); });
+    row.querySelector("button").addEventListener("click", () => {
+      sched.splice(idx, 1);
+      renderScheduleEditor();
+      refreshCardSchedule();
+    });
+    container.appendChild(row);
+  });
+}
+document.getElementById("btn-add-event").addEventListener("click", () => {
+  if (!selected || !selected.opts.isLocation) return;
+  if (!selected.data.schedule) selected.data.schedule = [];
+  selected.data.schedule.push({ time:"", title:"" });
+  renderScheduleEditor();
+  refreshCardSchedule();
+});
 
 function reprocessIcon(el, loc){
   const img = el.querySelector("img.piece");
@@ -711,6 +845,7 @@ function buildHotspots(){
       <div class="card">
         <h3>${loc.name}</h3>
         <p>${loc.desc}</p>
+        ${scheduleListHtml(loc)}
         <span class="cat-label">${CAT_LABELS[loc.cat]}</span>
       </div>
       <div class="resize-handle"></div>
@@ -786,7 +921,10 @@ function fmt(n){ return Math.round(n * 1000) / 1000; }
 document.getElementById("btn-export").addEventListener("click", () => {
   let out = "// ---- replace the existing `const LOCATIONS = [ ... ];` block with this ----\nconst LOCATIONS = [\n";
   LOCATIONS.forEach(loc => {
-    out += `  { icon:"${loc.icon}", x:${fmt(loc.x)}, y:${fmt(loc.y)}, w:${fmt(loc.w)}, h:${fmt(loc.h)}, cat:"${loc.cat}", name:"${loc.name.replace(/"/g,'\\"')}", desc:"${loc.desc.replace(/"/g,'\\"')}"${loc.autoKey ? ", autoKey:true" : ""} },\n`;
+    const schedText = (loc.schedule && loc.schedule.length)
+      ? `, schedule:[${loc.schedule.map(ev => `{time:"${(ev.time||"").replace(/"/g,'\\"')}", title:"${(ev.title||"").replace(/"/g,'\\"')}"}`).join(", ")}]`
+      : "";
+    out += `  { icon:"${loc.icon}", x:${fmt(loc.x)}, y:${fmt(loc.y)}, w:${fmt(loc.w)}, h:${fmt(loc.h)}, cat:"${loc.cat}", name:"${loc.name.replace(/"/g,'\\"')}", desc:"${loc.desc.replace(/"/g,'\\"')}"${loc.autoKey ? ", autoKey:true" : ""}${schedText} },\n`;
   });
   out += "];\n\n// ---- replace the existing `const DECOR = [ ... ];` block with this ----\nconst DECOR = [\n";
   DECOR.forEach(d => {
@@ -862,17 +1000,65 @@ document.getElementById("btn-upload-icon").addEventListener("click", () => {
   window.open("https://github.com/heyneeff/unison-map/upload/main/icons", "_blank", "noopener");
 });
 
-document.getElementById("btn-add-pin").addEventListener("click", () => {
-  const icon = prompt("Filename of the icon you just uploaded to the icons/ folder (e.g. my-new-icon.png):");
-  if (!icon || !icon.trim()) return;
+function addPinWithIcon(iconFilename){
   const name = prompt("Name for this location:", "[New Location]") || "[New Location]";
   const catInput = prompt(`Category — one of: ${CAT_ORDER.join(", ")}`, "sanctuary");
   const cat = CAT_ORDER.includes((catInput||"").trim()) ? catInput.trim() : "sanctuary";
-  const newLoc = { icon:icon.trim(), x:45, y:45, w:8, h:8, cat, name, desc:"Add a description.", autoKey:true };
+  const newLoc = { icon:iconFilename.trim(), x:45, y:45, w:8, h:8, cat, name, desc:"Add a description.", autoKey:true };
   LOCATIONS.push(newLoc);
   rebuildMap();
   const newEl = frame.querySelector(`.hotspot[data-id="${newLoc._id}"]`);
   if (newEl) selectElement(newEl, newLoc, { rotatable:false, label:newLoc.name, isLocation:true });
+}
+
+document.getElementById("btn-add-pin").addEventListener("click", () => {
+  const icon = prompt("Filename of the icon you just uploaded to the icons/ folder (e.g. my-new-icon.png):");
+  if (!icon || !icon.trim()) return;
+  addPinWithIcon(icon);
+});
+
+// ---- icon library (reads the icons/ folder from GitHub, read-only, no credentials) ----
+const GH_REPO = "heyneeff/unison-map";
+let libraryCache = null;
+const libraryModal = document.getElementById("library-modal");
+const libraryGrid = document.getElementById("library-grid");
+
+async function loadIconLibrary(force){
+  if (libraryCache && !force){ renderLibraryGrid(libraryCache); return; }
+  libraryGrid.innerHTML = `<div class="library-status">Loading from GitHub…</div>`;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/icons`, {
+      headers: { "Accept": "application/vnd.github+json" }
+    });
+    if (!res.ok) throw new Error(`GitHub API responded ${res.status}`);
+    const files = await res.json();
+    libraryCache = files.filter(f => f.type === "file" && /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f.name));
+    renderLibraryGrid(libraryCache);
+  } catch(err){
+    libraryGrid.innerHTML = `<div class="library-status">Couldn't load the icon list (${escapeHtml(err.message)}). You can still type a filename via "+ Add pin".</div>`;
+  }
+}
+function renderLibraryGrid(files){
+  if (!files.length){ libraryGrid.innerHTML = `<div class="library-status">No icons found.</div>`; return; }
+  libraryGrid.innerHTML = "";
+  files.forEach(f => {
+    const item = document.createElement("div");
+    item.className = "library-item";
+    item.innerHTML = `<img src="icons/${f.name}" alt=""><span>${escapeHtml(f.name)}</span>`;
+    item.addEventListener("click", () => {
+      libraryModal.classList.remove("show");
+      addPinWithIcon(f.name);
+    });
+    libraryGrid.appendChild(item);
+  });
+}
+document.getElementById("btn-icon-library").addEventListener("click", () => {
+  libraryModal.classList.add("show");
+  loadIconLibrary(false);
+});
+document.getElementById("btn-refresh-library").addEventListener("click", () => loadIconLibrary(true));
+document.getElementById("btn-close-library").addEventListener("click", () => {
+  libraryModal.classList.remove("show");
 });
 
 document.getElementById("btn-delete-pin").addEventListener("click", () => {
