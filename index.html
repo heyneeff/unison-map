@@ -357,6 +357,7 @@
     <button id="btn-toggle-edit">Editing: Off</button>
     <button id="btn-reset">Reload (keep saved layout)</button>
     <button id="btn-clear">Clear saved layout</button>
+    <button id="btn-upload-icon">Upload icon to GitHub &#8599;</button>
     <button id="btn-add-pin">+ Add pin</button>
     <button id="btn-delete-pin">Delete selected pin</button>
     <button id="btn-export" class="primary">Export layout</button>
@@ -857,8 +858,12 @@ function rebuildMap(){
   saveLayout();
 }
 
+document.getElementById("btn-upload-icon").addEventListener("click", () => {
+  window.open("https://github.com/heyneeff/unison-map/upload/main/icons", "_blank", "noopener");
+});
+
 document.getElementById("btn-add-pin").addEventListener("click", () => {
-  const icon = prompt("Icon filename already uploaded to the icons/ folder (e.g. my-new-icon.png):");
+  const icon = prompt("Filename of the icon you just uploaded to the icons/ folder (e.g. my-new-icon.png):");
   if (!icon || !icon.trim()) return;
   const name = prompt("Name for this location:", "[New Location]") || "[New Location]";
   const catInput = prompt(`Category — one of: ${CAT_ORDER.join(", ")}`, "sanctuary");
