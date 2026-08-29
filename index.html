@@ -358,7 +358,7 @@
   /* ---------- header schedule buttons ---------- */
   .header-btn{
     position:absolute;
-    top:calc(4.5% + 0.5in);
+    top:7.74%;
     transform:translateX(-50%);
     z-index:8;
     display:flex; align-items:center; gap:7px;
@@ -378,18 +378,23 @@
   .header-btn:hover{ background:#2f2213ee; }
   .header-btn img{ height:1.6em; width:auto; object-fit:contain; flex-shrink:0; }
   /* map split into 5 columns: Stage Schedule centered in column 2, Carnival Schedule in column 4,
-     Artist Lineup directly below Carnival Schedule (same column, dropped one row) */
-  .header-btn-left{ left:calc(30% - 0.5in); top:calc(4.5% + 0.85in); }
-  .header-btn-center{ left:calc(70% + 0.5in); top:calc(4.5% + 0.85in); }
-  .header-btn-right{ left:calc(70% + 0.5in); }
+     Artist Lineup directly below Carnival Schedule (same column, dropped one row).
+     Horizontal position is % of the map's own width, so it scales correctly
+     instead of scattering on narrow/mobile widths. Vertical row-to-row gaps
+     are a fixed px added on top of the % base instead: button height is
+     basically constant in px (padding + a font floor), so a % gap shrinks
+     away and rows start overlapping on a small phone — a fixed gap doesn't. */
+  .header-btn-left{ left:25.64%; top:calc(7.74% + 42px); }
+  .header-btn-center{ left:74.36%; top:calc(7.74% + 42px); }
+  .header-btn-right{ left:74.36%; }
 
   /* ---------- category glow dropdown: one button (same styling as the
      schedule buttons) under Stage Schedule that opens a small menu
      listing every active category; picking one flashes its pins ---------- */
-  .header-btn-glow{ left:calc(30% - 0.5in); top:calc(4.5% + 1.35in); }
+  .header-btn-glow{ left:25.64%; top:calc(7.74% + 84px); }
   .glow-menu{
     position:absolute; z-index:9;
-    top:calc(4.5% + 1.78in); left:calc(30% - 0.5in); transform:translateX(-50%);
+    top:calc(7.74% + 124px); left:25.64%; transform:translateX(-50%);
     display:none; flex-direction:column; gap:2px;
     min-width:160px;
     background:#241a10ee;
@@ -1043,10 +1048,19 @@ document.getElementById("rotate-slider").addEventListener("change", () => {
    that this would otherwise eat into.
    ============================================================ */
 function autoKeyWhiteBg(imgEl){
+  // Pins never render larger than a small fraction of the map, so cap the
+  // processing resolution well below a full-size upload (some icons are
+  // 1500px+). Full-resolution canvas ops on many pins at once is what was
+  // blowing past mobile Safari's per-canvas/memory limits and silently
+  // corrupting the resulting image (broken-icon pins on phones).
+  const MAX_DIM = 800;
   const run = () => {
     try {
-      const w = imgEl.naturalWidth, h = imgEl.naturalHeight;
-      if (!w || !h) return;
+      const nw = imgEl.naturalWidth, nh = imgEl.naturalHeight;
+      if (!nw || !nh) return;
+      const scale = Math.min(1, MAX_DIM / Math.max(nw, nh));
+      const w = Math.max(1, Math.round(nw * scale));
+      const h = Math.max(1, Math.round(nh * scale));
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d");
@@ -1059,8 +1073,12 @@ function autoKeyWhiteBg(imgEl){
         d[i+3] = Math.min(d[i+3], Math.round(factor * 255));
       }
       ctx.putImageData(imgData, 0, 0);
+      const dataUrl = canvas.toDataURL("image/png");
+      // A failed/OOM'd export can come back as a near-empty "data:," URI
+      // instead of throwing — guard against swapping in a broken image.
+      if (dataUrl.length < 100) return;
       imgEl.dataset.keyed = "1";
-      imgEl.src = canvas.toDataURL("image/png");
+      imgEl.src = dataUrl;
     } catch(err) { /* e.g. tainted canvas — leave the image as-is */ }
   };
   if (imgEl.complete && imgEl.naturalWidth) run();
