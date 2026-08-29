@@ -49,6 +49,32 @@
     margin:0 auto;
     background:#1c140c;
   }
+  /* ---------- initial loading state: hides the bare/empty map (no bg image,
+     no pins yet) behind a spinner instead of letting visitors see it paint
+     in piece by piece; fades out once the background art has loaded and the
+     first render (remote layout, or local fallback) has happened. ---------- */
+  .map-loading{
+    position:absolute; inset:0; z-index:60;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px;
+    background:#1c140c;
+    color:var(--parchment);
+    font-family:Georgia,serif;
+    font-size:13px; letter-spacing:.03em;
+    transition:opacity .4s ease;
+  }
+  .map-loading.hide{ opacity:0; pointer-events:none; }
+  .map-loading .spinner{
+    width:34px; height:34px; border-radius:50%;
+    border:3px solid #4a3320; border-top-color:var(--gold);
+    animation:map-spin .85s linear infinite;
+  }
+  @keyframes map-spin{ to{ transform:rotate(360deg); } }
+  #map-viewport, .map-header-buttons{
+    opacity:0;
+    transition:opacity .4s ease;
+  }
+  #map-wrap.ready #map-viewport, #map-wrap.ready .map-header-buttons{ opacity:1; }
   #map-viewport{
     position:relative;
     width:100%;
@@ -126,7 +152,11 @@
     position:absolute;
     bottom:calc(100% + 8px);
     left:50%;
-    transform:translateX(-50%) scale(.92);
+    /* --card-shift is computed in JS (positionCard) so the card stays
+       inside #map-viewport's bounds — that viewport has overflow:hidden,
+       so a card centered over an edge pin (e.g. Pavilion, near the left
+       edge) would otherwise be clipped rather than just visually tight. */
+    transform:translateX(calc(-50% + var(--card-shift, 0px))) scale(.92);
     width:max-content;
     max-width:min(260px, 55vw);
     background:var(--card-bg);
@@ -141,7 +171,7 @@
   }
   .hotspot:hover .card, .hotspot.active .card{
     opacity:1;
-    transform:translateX(-50%) scale(1);
+    transform:translateX(calc(-50% + var(--card-shift, 0px))) scale(1);
     pointer-events:auto;
   }
   .card h3{ margin:0 0 4px; font-size:14px; color:var(--purple-dark); line-height:1.2; }
@@ -361,46 +391,57 @@
   }
   .library-status{ font-size:13px; color:var(--ink); padding:8px; grid-column:1/-1; }
 
-  /* ---------- header schedule buttons ---------- */
-  .header-btn{
+  /* ---------- header schedule buttons ----------
+     Two columns pinned over the map, flanking the UNISON wordmark (DECOR
+     "logo", x:34.57–65.43%) instead of one bar centered above everything.
+     Positioned by % of the map so they track the logo at any width; each
+     column is a plain flex stack (not fixed px offsets per button), so
+     buttons wrap onto their own line instead of colliding on narrow/mobile
+     screens the way the old absolute-per-button layout did. */
+  .map-header-buttons{ position:absolute; inset:0; z-index:8; pointer-events:none; }
+  .header-col{
     position:absolute;
-    top:7.74%;
-    transform:translateX(-50%);
-    z-index:8;
-    display:flex; align-items:center; gap:7px;
+    top:8.5%;
+    width:22%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:5px;
+    pointer-events:none;
+  }
+  .header-col-left{ left:14%; }
+  .header-col-right{ right:14%; }
+  .header-btn-wrap{ position:relative; display:flex; }
+  .header-btn{
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    width:max-content;
+    max-width:100%;
     background:#241a10ee;
     color:var(--parchment);
     border:2px solid var(--gold);
     border-radius:999px;
-    padding:6px 14px;
+    padding:4px 8px;
     font-family:Georgia,serif;
-    font-size:clamp(9px,2vw,13px);
+    font-size:clamp(7px,1.7vw,11px);
     font-weight:bold;
     letter-spacing:.02em;
     cursor:pointer;
     box-shadow:0 3px 10px rgba(0,0,0,.5);
-    white-space:nowrap;
+    white-space:normal;
+    line-height:1.15;
+    text-align:center;
+    pointer-events:auto;
   }
   .header-btn:hover{ background:#2f2213ee; }
   .header-btn img{ height:1.6em; width:auto; object-fit:contain; flex-shrink:0; }
-  /* map split into 5 columns: Stage Schedule centered in column 2, Carnival Schedule in column 4,
-     Artist Lineup directly below Carnival Schedule (same column, dropped one row).
-     Horizontal position is % of the map's own width, so it scales correctly
-     instead of scattering on narrow/mobile widths. Vertical row-to-row gaps
-     are a fixed px added on top of the % base instead: button height is
-     basically constant in px (padding + a font floor), so a % gap shrinks
-     away and rows start overlapping on a small phone — a fixed gap doesn't. */
-  .header-btn-left{ left:25.64%; top:calc(7.74% + 42px); }
-  .header-btn-center{ left:74.36%; top:calc(7.74% + 42px); }
-  .header-btn-right{ left:74.36%; }
 
   /* ---------- category glow dropdown: one button (same styling as the
-     schedule buttons) under Stage Schedule that opens a small menu
-     listing every active category; picking one flashes its pins ---------- */
-  .header-btn-glow{ left:25.64%; top:calc(7.74% + 84px); }
+     schedule buttons) that opens a small menu listing every active
+     category; picking one flashes its pins. Anchored to its own button's
+     wrapper now, so it always drops directly under that button. ---------- */
   .glow-menu{
     position:absolute; z-index:9;
-    top:calc(7.74% + 124px); left:25.64%; transform:translateX(-50%);
+    top:calc(100% + 6px); left:50%; transform:translateX(-50%);
     display:none; flex-direction:column; gap:2px;
     min-width:160px;
     background:#241a10ee;
@@ -456,11 +497,15 @@
   .modal-sched-empty{ font-size:13px; color:#8a7a5a; font-style:italic; margin:0 0 8px; }
 
   /* ---------- schedule overlay: translucent card floating over the (possibly
-     zoomed) map itself, rather than a full-screen opaque modal ---------- */
+     zoomed) map itself, rather than a full-screen opaque modal ----------
+     Fixed to the actual browser viewport, not map-wrap: map-wrap's height
+     tracks the map's tall portrait aspect ratio, which on mobile is often
+     much taller than the screen, so an overlay sized to map-wrap could
+     center the card outside the visible area and clip it. */
   .schedule-overlay{
-    position:absolute; inset:0; z-index:40;
+    position:fixed; inset:0; z-index:100;
     display:none; align-items:center; justify-content:center;
-    padding:6%;
+    padding:20px;
   }
   .schedule-overlay.show{ display:flex; }
   .schedule-overlay-card{
@@ -469,7 +514,7 @@
     -webkit-backdrop-filter:blur(4px);
     border:2px solid var(--gold);
     border-radius:14px;
-    max-width:420px; width:100%; max-height:100%;
+    max-width:420px; width:100%; max-height:85vh; max-height:85dvh;
     padding:18px;
     display:flex; flex-direction:column;
     color:var(--parchment);
@@ -489,6 +534,7 @@
 
   /* ---------- map key: expandable section below the map ---------- */
   .key-section{
+    display:none;
     max-width:1100px;
     margin:14px auto 30px;
     background:#241a10;
@@ -585,6 +631,11 @@
 </div>
 
 <div id="map-wrap">
+  <div class="map-loading" id="map-loading">
+    <div class="spinner"></div>
+    <span>Loading map&hellip;</span>
+  </div>
+
   <div id="map-viewport">
     <div id="map-frame">
       <img class="bg" src="bg.webp" alt="Unison site map">
@@ -592,14 +643,21 @@
     </div>
   </div>
 
-  <button class="header-btn header-btn-left" id="btn-stage-schedule">Stage Schedule</button>
-  <button class="header-btn header-btn-center" id="btn-artist-lineup">Artist Lineup</button>
-  <button class="header-btn header-btn-right" id="btn-carnival-schedule">
-    <img src="icons/carnival-emblem.png" alt="">Carnival Schedule
-  </button>
-
-  <button class="header-btn header-btn-glow" id="btn-glow-menu">Highlight ▾</button>
-  <div class="glow-menu" id="glow-menu"></div>
+  <div class="map-header-buttons" id="map-header-buttons">
+    <div class="header-col header-col-left">
+      <button class="header-btn" id="btn-stage-schedule">Stage Schedule</button>
+      <div class="header-btn-wrap">
+        <button class="header-btn" id="btn-glow-menu">Highlight ▾</button>
+        <div class="glow-menu" id="glow-menu"></div>
+      </div>
+    </div>
+    <div class="header-col header-col-right">
+      <button class="header-btn" id="btn-carnival-schedule">
+        <img src="icons/carnival-emblem.png" alt="">Carnival Schedule
+      </button>
+      <button class="header-btn" id="btn-artist-lineup">Artist Lineup</button>
+    </div>
+  </div>
 
   <button type="button" class="img-issue-badge" id="img-issue-badge" title="Tap for details"></button>
 
@@ -1133,6 +1191,28 @@ function autoKeyWhiteBg(imgEl, pinName){
   else imgEl.addEventListener("load", run, { once:true });
 }
 
+// Keeps a hover/active card's popover inside #map-viewport's bounds instead
+// of letting overflow:hidden clip it when the pin sits near a map edge.
+function positionCard(hs){
+  const card = hs.querySelector(".card");
+  const viewport = document.getElementById("map-viewport");
+  if (!card || !viewport) return;
+  card.style.setProperty("--card-shift", "0px");
+  requestAnimationFrame(() => {
+    const vRect = viewport.getBoundingClientRect();
+    const cRect = card.getBoundingClientRect();
+    const margin = 8;
+    let shift = 0;
+    if (cRect.left < vRect.left + margin) shift = (vRect.left + margin) - cRect.left;
+    else if (cRect.right > vRect.right - margin) shift = (vRect.right - margin) - cRect.right;
+    card.style.setProperty("--card-shift", Math.round(shift) + "px");
+  });
+}
+window.addEventListener("resize", () => {
+  const active = frame.querySelector(".hotspot.active");
+  if (active) positionCard(active);
+});
+
 function buildHotspots(){
   frame.querySelectorAll(".hotspot").forEach(el => el.remove());
   LOCATIONS.forEach((loc, i) => {
@@ -1165,11 +1245,12 @@ function buildHotspots(){
       <div class="resize-handle"></div>
     `;
 
+    hs.addEventListener("mouseenter", () => positionCard(hs));
     hs.addEventListener("click", (e) => {
       if (document.body.classList.contains("editing")) return;
       const isActive = hs.classList.contains("active");
       document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
-      if (!isActive) hs.classList.add("active");
+      if (!isActive) { hs.classList.add("active"); positionCard(hs); }
     });
 
     const pieceImg = hs.querySelector("img.piece");
@@ -1596,6 +1677,18 @@ document.getElementById("btn-delete-pin").addEventListener("click", () => {
 // map. Instead, wait briefly for the shared layout so the very first paint
 // is already correct; only fall back to local/default data (and re-render
 // once if the shared layout arrives late) when the network is slow.
+function waitForBg(){
+  return new Promise(resolve => {
+    const bg = document.querySelector("#map-frame img.bg");
+    if (bg.complete && bg.naturalWidth) resolve();
+    else bg.addEventListener("load", resolve, { once:true });
+  });
+}
+function revealMap(){
+  document.getElementById("map-wrap").classList.add("ready");
+  document.getElementById("map-loading").classList.add("hide");
+}
+
 (async function initMap(){
   const remotePromise = fetchRemoteLayout();
   const timedOut = Symbol("timeout");
@@ -1620,6 +1713,8 @@ document.getElementById("btn-delete-pin").addEventListener("click", () => {
   } else {
     render(first); // remote answered in time (null here just means the fetch failed)
   }
+  await waitForBg();
+  revealMap();
 })();
 </script>
 
