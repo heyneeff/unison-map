@@ -449,6 +449,9 @@
     border-radius:12px;
     padding:6px;
     box-shadow:0 6px 16px rgba(0,0,0,.5);
+    pointer-events:auto; /* .header-col above sets pointer-events:none so
+      empty space around the buttons doesn't block map clicks; this menu
+      needs its own override or its items are visible but unclickable. */
   }
   .glow-menu.show{ display:flex; }
   .glow-menu-item{
