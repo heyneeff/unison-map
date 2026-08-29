@@ -1129,7 +1129,6 @@ function buildHotspots(){
     attachDragResize(hs, loc, { rotatable:false, label:loc.name, isLocation:true });
   });
 }
-buildHotspots();
 
 document.addEventListener("click", (e) => {
   if (document.body.classList.contains("editing")) return;
@@ -1158,20 +1157,6 @@ function buildDecor(){
     attachDragResize(el, d, { rotatable: d.id === "arrow", label: d.id, flip: !!d.flip });
   });
 }
-buildDecor();
-
-// Fetch the shared layout from the Worker and swap it in once it arrives,
-// so this device picks up edits made from any other device (this is what
-// makes newly-added pins/icons show up on mobile without a manual export).
-(async function syncFromRemote(){
-  const remote = await fetchRemoteLayout();
-  if (!remote) return;
-  applyLayoutData(remote);
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote)); } catch(err){}
-  buildHotspots();
-  buildDecor();
-  if (typeof buildKeyPanel === "function") buildKeyPanel();
-})();
 
 // ---- toolbar wiring ----
 document.getElementById("btn-toggle-edit").addEventListener("click", (e) => {
@@ -1315,7 +1300,6 @@ function buildKeyPanel(){
     keyGroupsEl.appendChild(group);
   });
 }
-buildKeyPanel();
 
 // ---- add / delete pins ----
 function rebuildMap(){
@@ -1553,6 +1537,40 @@ document.getElementById("btn-delete-pin").addEventListener("click", () => {
   document.getElementById("rotate-box").classList.remove("show");
   rebuildMap();
 });
+
+// ---- initial render ----
+// Rendering immediately from local/built-in data and then rebuilding again
+// once the Worker's shared layout arrives caused a visible "flash" — every
+// pin swapping at once — for any visitor whose local cache (or the
+// committed defaults, for a first-ever visit) differs from the live shared
+// map. Instead, wait briefly for the shared layout so the very first paint
+// is already correct; only fall back to local/default data (and re-render
+// once if the shared layout arrives late) when the network is slow.
+(async function initMap(){
+  const remotePromise = fetchRemoteLayout();
+  const timedOut = Symbol("timeout");
+  const first = await Promise.race([
+    remotePromise,
+    new Promise(resolve => setTimeout(() => resolve(timedOut), 2500))
+  ]);
+
+  function render(data){
+    if (data){
+      applyLayoutData(data);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(err){}
+    }
+    buildHotspots();
+    buildDecor();
+    buildKeyPanel();
+  }
+
+  if (first === timedOut){
+    render(null); // paint now with whatever local/default data we already have
+    remotePromise.then(late => { if (late) render(late); }); // one re-render if it arrives late
+  } else {
+    render(first); // remote answered in time (null here just means the fetch failed)
+  }
+})();
 </script>
 
 </body>
