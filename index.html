@@ -383,32 +383,35 @@
   .header-btn-center{ left:calc(70% + 0.5in); top:calc(4.5% + 0.85in); }
   .header-btn-right{ left:calc(70% + 0.5in); }
 
-  /* ---------- category glow row: one small pill per pin category,
-     sitting below the header buttons, that flashes every pin in
-     that category at once ---------- */
-  .glow-row{
-    position:absolute; z-index:8;
-    top:calc(4.5% + 1.35in); left:50%; transform:translateX(-50%);
-    width:92%;
-    display:flex; flex-wrap:wrap; justify-content:center; gap:5px;
-  }
-  .glow-btn{
-    display:flex; align-items:center; gap:5px;
+  /* ---------- category glow dropdown: one button (same styling as the
+     schedule buttons) under Stage Schedule that opens a small menu
+     listing every active category; picking one flashes its pins ---------- */
+  .header-btn-glow{ left:calc(30% - 0.5in); top:calc(4.5% + 1.35in); }
+  .glow-menu{
+    position:absolute; z-index:9;
+    top:calc(4.5% + 1.78in); left:calc(30% - 0.5in); transform:translateX(-50%);
+    display:none; flex-direction:column; gap:2px;
+    min-width:160px;
     background:#241a10ee;
-    color:var(--parchment);
-    border:1.5px solid var(--gold);
-    border-radius:999px;
-    padding:4px 10px;
-    font-family:Georgia,serif;
-    font-size:clamp(8px,1.7vw,11px);
-    font-weight:bold;
-    letter-spacing:.02em;
-    cursor:pointer;
-    white-space:nowrap;
-    box-shadow:0 2px 6px rgba(0,0,0,.45);
+    border:2px solid var(--gold);
+    border-radius:12px;
+    padding:6px;
+    box-shadow:0 6px 16px rgba(0,0,0,.5);
   }
-  .glow-btn:hover{ background:#2f2213ee; }
-  .glow-btn i{ width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .glow-menu.show{ display:flex; }
+  .glow-menu-item{
+    display:flex; align-items:center; gap:7px;
+    background:none; border:none; border-radius:7px;
+    color:var(--parchment);
+    font-family:Georgia,serif;
+    font-size:clamp(9px,1.8vw,12px);
+    font-weight:bold;
+    text-align:left;
+    padding:6px 9px;
+    cursor:pointer;
+  }
+  .glow-menu-item:hover{ background:#3a2a17; }
+  .glow-menu-item i{ width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
 
   .carnival-wordmark{
     display:block; max-width:280px; width:70%; margin:0 auto 12px;
@@ -565,7 +568,8 @@
     <img src="icons/carnival-emblem.png" alt="">Carnival Schedule
   </button>
 
-  <div class="glow-row" id="glow-row"></div>
+  <button class="header-btn header-btn-glow" id="btn-glow-menu">Highlight ▾</button>
+  <div class="glow-menu" id="glow-menu"></div>
 
   <div class="schedule-overlay" id="stage-schedule-overlay">
     <div class="schedule-overlay-card">
@@ -1235,22 +1239,31 @@ function glowCategory(cat){
   });
 }
 
-const glowRowEl = document.getElementById("glow-row");
-function buildGlowRow(){
-  glowRowEl.innerHTML = "";
+const glowMenuEl = document.getElementById("glow-menu");
+const glowMenuToggle = document.getElementById("btn-glow-menu");
+function closeGlowMenu(){ glowMenuEl.classList.remove("show"); }
+glowMenuToggle.addEventListener("click", (e) => {
+  e.stopPropagation();
+  glowMenuEl.classList.toggle("show");
+});
+document.addEventListener("click", (e) => {
+  if (!glowMenuEl.contains(e.target) && e.target !== glowMenuToggle) closeGlowMenu();
+});
+function buildGlowMenu(){
+  glowMenuEl.innerHTML = "";
   CAT_ORDER.forEach(cat => {
     if (!LOCATIONS.some(l => l.cat === cat)) return;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "glow-btn";
+    btn.className = "glow-menu-item";
     btn.innerHTML = `<i style="background:${CAT_SWATCH[cat]||'#999'}"></i>${CAT_LABELS[cat]}`;
-    btn.addEventListener("click", (e) => { e.stopPropagation(); glowCategory(cat); });
-    glowRowEl.appendChild(btn);
+    btn.addEventListener("click", (e) => { e.stopPropagation(); glowCategory(cat); closeGlowMenu(); });
+    glowMenuEl.appendChild(btn);
   });
 }
 
 function buildKeyPanel(){
-  buildGlowRow();
+  buildGlowMenu();
   keyGroupsEl.innerHTML = "";
   CAT_ORDER.forEach(cat => {
     const items = LOCATIONS.filter(l => l.cat === cat);
