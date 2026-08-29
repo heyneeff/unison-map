@@ -19,6 +19,12 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:#1c140c;font-family:Georgia,'Times New Roman',serif;}
+  /* Mobile Safari applies its own native padding/min-height/rounded-corner
+     styling to <button> on top of whatever CSS is set here, which threw off
+     the button-row spacing (tuned against Chrome, which doesn't do this).
+     Reset it so every browser renders buttons at exactly the size the CSS
+     below specifies. */
+  button{ appearance:none; -webkit-appearance:none; font:inherit; margin:0; }
 
   /* ============================================================
      EDIT ME: everything a non-developer needs to fill in lives in
@@ -416,6 +422,25 @@
     cursor:pointer;
   }
   .glow-menu-item:hover{ background:#3a2a17; }
+
+  /* ---------- icon-issue badge: hidden unless a pin's image actually fails
+     to load or process, so a bug report can show exactly which pins and why
+     instead of "some icons are missing" ---------- */
+  .img-issue-badge{
+    display:none;
+    position:absolute; z-index:20;
+    top:6px; right:6px;
+    background:#7a1f1f;
+    color:#fff0e0;
+    border:1.5px solid #ffb199;
+    border-radius:999px;
+    padding:4px 10px;
+    font-family:Georgia,serif;
+    font-size:11px;
+    font-weight:bold;
+    cursor:pointer;
+  }
+  .img-issue-badge.show{ display:block; }
   .glow-menu-item i{ width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
 
   .carnival-wordmark{
@@ -575,6 +600,8 @@
 
   <button class="header-btn header-btn-glow" id="btn-glow-menu">Highlight ▾</button>
   <div class="glow-menu" id="glow-menu"></div>
+
+  <button type="button" class="img-issue-badge" id="img-issue-badge" title="Tap for details"></button>
 
   <div class="schedule-overlay" id="stage-schedule-overlay">
     <div class="schedule-overlay-card">
@@ -1047,7 +1074,26 @@ document.getElementById("rotate-slider").addEventListener("change", () => {
    legitimately contain near-white colors (cream tent fabric, etc.)
    that this would otherwise eat into.
    ============================================================ */
-function autoKeyWhiteBg(imgEl){
+// ---- lightweight on-page diagnostics: image load / processing failures
+// were happening invisibly (a pin just quietly stayed blank), which made
+// them impossible to debug from a bug report alone. Now they're logged and
+// surfaced as a small tappable badge so a screenshot shows exactly what
+// failed and why. ----
+const imgIssues = [];
+function flagImageIssue(pinName, reason){
+  imgIssues.push(`${pinName}: ${reason}`);
+  console.error("[map icon issue]", pinName, reason);
+  const badge = document.getElementById("img-issue-badge");
+  if (badge){
+    badge.textContent = `⚠ ${imgIssues.length} icon issue${imgIssues.length > 1 ? "s" : ""}`;
+    badge.classList.add("show");
+  }
+}
+document.getElementById("img-issue-badge").addEventListener("click", () => {
+  alert(imgIssues.join("\n") || "No issues logged.");
+});
+
+function autoKeyWhiteBg(imgEl, pinName){
   // Pins never render larger than a small fraction of the map, so cap the
   // processing resolution well below a full-size upload (some icons are
   // 1500px+). Full-resolution canvas ops on many pins at once is what was
@@ -1057,7 +1103,7 @@ function autoKeyWhiteBg(imgEl){
   const run = () => {
     try {
       const nw = imgEl.naturalWidth, nh = imgEl.naturalHeight;
-      if (!nw || !nh) return;
+      if (!nw || !nh) { flagImageIssue(pinName, "image loaded with zero natural size"); return; }
       const scale = Math.min(1, MAX_DIM / Math.max(nw, nh));
       const w = Math.max(1, Math.round(nw * scale));
       const h = Math.max(1, Math.round(nh * scale));
@@ -1076,10 +1122,12 @@ function autoKeyWhiteBg(imgEl){
       const dataUrl = canvas.toDataURL("image/png");
       // A failed/OOM'd export can come back as a near-empty "data:," URI
       // instead of throwing — guard against swapping in a broken image.
-      if (dataUrl.length < 100) return;
+      if (dataUrl.length < 100) { flagImageIssue(pinName, `white-bg removal produced an empty result (${nw}x${nh} source)`); return; }
       imgEl.dataset.keyed = "1";
       imgEl.src = dataUrl;
-    } catch(err) { /* e.g. tainted canvas — leave the image as-is */ }
+    } catch(err) {
+      flagImageIssue(pinName, `white-bg removal threw: ${err.message}`);
+    }
   };
   if (imgEl.complete && imgEl.naturalWidth) run();
   else imgEl.addEventListener("load", run, { once:true });
@@ -1124,8 +1172,10 @@ function buildHotspots(){
       if (!isActive) hs.classList.add("active");
     });
 
+    const pieceImg = hs.querySelector("img.piece");
+    pieceImg.addEventListener("error", () => flagImageIssue(loc.name, `failed to load icons/${loc.icon}`), { once:true });
     frame.appendChild(hs);
-    if (loc.autoKey) autoKeyWhiteBg(hs.querySelector("img.piece"));
+    if (loc.autoKey) autoKeyWhiteBg(pieceImg, loc.name);
     attachDragResize(hs, loc, { rotatable:false, label:loc.name, isLocation:true });
   });
 }
