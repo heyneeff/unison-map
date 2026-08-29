@@ -188,16 +188,15 @@
     0%,100%{ transform:translateY(0) scale(1); }
     50%{ transform:translateY(-1.8%) scale(1.012); }
   }
-  /* stage icons dance harder, like they're bouncing to the music */
+  /* stage icons bump together, in time with each other, like they're
+     all bouncing to the same beat */
   .hotspot.cat-stage{
     animation-name:icon-bump-stage;
-    animation-timing-function:cubic-bezier(.32,1.6,.5,1);
+    animation-timing-function:ease-in-out;
   }
   @keyframes icon-bump-stage{
-    0%,100%{ transform:translateY(0) scale(1) rotate(0deg); }
-    35%{ transform:translateY(-9%) scale(1.06) rotate(-2deg); }
-    60%{ transform:translateY(0) scale(1) rotate(1deg); }
-    80%{ transform:translateY(-4%) scale(1.03) rotate(-1deg); }
+    0%,100%{ transform:translateY(0) scale(1); }
+    50%{ transform:translateY(-3.5%) scale(1.025); }
   }
 
   /* ---------- edit mode ---------- */
@@ -1024,10 +1023,9 @@ function buildHotspots(){
     hs.style.width = loc.w + "%";
     hs.style.height = loc.h + "%";
     if (loc.cat === "stage") {
-      // wider, less regular spread + slightly varied speed so the stage icons
-      // read as independently "dancing to the music" rather than in lockstep
-      hs.style.setProperty("--bump-delay", ((i * 0.83) % 2.6) + "s");
-      hs.style.setProperty("--bump-dur", (1.1 + ((i * 0.37) % 0.6)) + "s");
+      // same delay + duration for every stage icon so they bump in sync
+      hs.style.setProperty("--bump-delay", "0s");
+      hs.style.setProperty("--bump-dur", "1.8s");
     } else {
       hs.style.setProperty("--bump-delay", ((i * 0.37) % 1.7) + "s");
     }
