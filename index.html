@@ -121,7 +121,11 @@
     transform:scale(1.06);
     filter:drop-shadow(0 4px 10px rgba(0,0,0,.55)) brightness(1.08);
   }
-  .hotspot:hover, .hotspot.active{ z-index:5; }
+  /* Above .map-header-buttons (z-index:8) and its .glow-menu (9), so a
+     pin's hover card never renders behind the header buttons when it
+     happens to float up into that area (e.g. Campfire Circle). Still
+     below the fixed schedule-overlay modals (100). */
+  .hotspot:hover, .hotspot.active{ z-index:15; }
   .hotspot.flash .ring{
     opacity:1 !important;
     animation:flash-pulse 1.1s ease-out 2;
