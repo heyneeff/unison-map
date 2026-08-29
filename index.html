@@ -383,6 +383,33 @@
   .header-btn-center{ left:calc(70% + 0.5in); top:calc(4.5% + 0.85in); }
   .header-btn-right{ left:calc(70% + 0.5in); }
 
+  /* ---------- category glow row: one small pill per pin category,
+     sitting below the header buttons, that flashes every pin in
+     that category at once ---------- */
+  .glow-row{
+    position:absolute; z-index:8;
+    top:calc(4.5% + 1.35in); left:50%; transform:translateX(-50%);
+    width:92%;
+    display:flex; flex-wrap:wrap; justify-content:center; gap:5px;
+  }
+  .glow-btn{
+    display:flex; align-items:center; gap:5px;
+    background:#241a10ee;
+    color:var(--parchment);
+    border:1.5px solid var(--gold);
+    border-radius:999px;
+    padding:4px 10px;
+    font-family:Georgia,serif;
+    font-size:clamp(8px,1.7vw,11px);
+    font-weight:bold;
+    letter-spacing:.02em;
+    cursor:pointer;
+    white-space:nowrap;
+    box-shadow:0 2px 6px rgba(0,0,0,.45);
+  }
+  .glow-btn:hover{ background:#2f2213ee; }
+  .glow-btn i{ width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0; }
+
   .carnival-wordmark{
     display:block; max-width:280px; width:70%; margin:0 auto 12px;
   }
@@ -473,12 +500,6 @@
     border-bottom:1px solid #4a3320;
   }
   .key-group-title i{ width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
-  .key-group-glow{
-    margin-left:auto; background:none; border:1px solid #4a3320; border-radius:20px;
-    color:#cbb98a; font-family:Georgia,serif; text-transform:none; letter-spacing:0;
-    font-size:11px; padding:2px 10px; cursor:pointer;
-  }
-  .key-group-glow:hover{ border-color:var(--gold); color:var(--gold); }
   .key-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:6px; }
   .key-item{
     display:flex; align-items:center; gap:8px;
@@ -543,6 +564,8 @@
   <button class="header-btn header-btn-right" id="btn-carnival-schedule">
     <img src="icons/carnival-emblem.png" alt="">Carnival Schedule
   </button>
+
+  <div class="glow-row" id="glow-row"></div>
 
   <div class="schedule-overlay" id="stage-schedule-overlay">
     <div class="schedule-overlay-card">
@@ -1212,7 +1235,22 @@ function glowCategory(cat){
   });
 }
 
+const glowRowEl = document.getElementById("glow-row");
+function buildGlowRow(){
+  glowRowEl.innerHTML = "";
+  CAT_ORDER.forEach(cat => {
+    if (!LOCATIONS.some(l => l.cat === cat)) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "glow-btn";
+    btn.innerHTML = `<i style="background:${CAT_SWATCH[cat]||'#999'}"></i>${CAT_LABELS[cat]}`;
+    btn.addEventListener("click", (e) => { e.stopPropagation(); glowCategory(cat); });
+    glowRowEl.appendChild(btn);
+  });
+}
+
 function buildKeyPanel(){
+  buildGlowRow();
   keyGroupsEl.innerHTML = "";
   CAT_ORDER.forEach(cat => {
     const items = LOCATIONS.filter(l => l.cat === cat);
@@ -1222,12 +1260,6 @@ function buildKeyPanel(){
     const title = document.createElement("div");
     title.className = `key-group-title cat-${cat}`;
     title.innerHTML = `<i style="background:${CAT_SWATCH[cat]||'#999'}"></i>${CAT_LABELS[cat]}`;
-    const glowBtn = document.createElement("button");
-    glowBtn.type = "button";
-    glowBtn.className = "key-group-glow";
-    glowBtn.textContent = "✦ Glow";
-    glowBtn.addEventListener("click", (e) => { e.stopPropagation(); glowCategory(cat); });
-    title.appendChild(glowBtn);
     group.appendChild(title);
     const list = document.createElement("div");
     list.className = "key-list";
