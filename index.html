@@ -97,6 +97,11 @@
     user-select:none;
   }
 
+  /* a hotspot marked non-interactive (loc.interactive === false) still shows
+     its icon and can be dragged in edit mode, but is inert to hover/click for
+     visitors — for pins that are purely decorative map dressing. */
+  body:not(.editing) .hotspot.non-interactive{ pointer-events:none; }
+
   .hotspot, .decor{
     position:absolute;
     z-index:2;
@@ -789,7 +794,7 @@ const LOCATIONS = [
   { icon:"watchtower_stage.png", x:60.215, y:54.449, w:16.077, h:12.185, cat:"stage", name:"[Main Stage]", desc:"Add a description." },
   { icon:"restroom.png", x:7.025, y:60.154, w:8.459, h:5.364, cat:"amenity", name:"[Restrooms]", desc:"Add a description." },
   { icon:"purple_tent_stall_b.png", x:48.124, y:60.185, w:8.946, h:5.394, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
-  { icon:"portal_doors_column.png", x:88.204, y:61.705, w:6.333, h:19.191, cat:"sanctuary", name:"[Portal Doors]", desc:"Add a description." },
+  { icon:"portal_doors_column.png", x:88.204, y:61.705, w:6.333, h:19.191, cat:"art", name:"Portal Potties", desc:"By Hillary Bernhardt. Ordinary-looking port-a-potties concealing full theme makeovers — Grandma's Bathroom, Under the Sea, Princess Room, Jurassic Park." },
   { icon:"purple_pavilion.png", x:7.822, y:66.789, w:12.046, h:7.441, cat:"sanctuary", name:"[Pavilion]", desc:"Add a description." },
   { icon:"sun_orb_sculpture.png", x:25.493, y:66.355, w:6.997, h:5.488, cat:"sanctuary", name:"[Sun Orb]", desc:"Add a description." },
   { icon:"campfire.png", x:45.378, y:66.324, w:4.739, h:3.224, cat:"stage", name:"[Campfire Circle]", desc:"Add a description." },
@@ -957,7 +962,7 @@ function applyLayoutData(data){
 }
 function collectLayoutData(){
   const data = {
-    locations: LOCATIONS.map(l => ({ icon:l.icon, x:l.x, y:l.y, w:l.w, h:l.h, cat:l.cat, name:l.name, desc:l.desc, autoKey: !!l.autoKey, schedule: l.schedule || [] })),
+    locations: LOCATIONS.map(l => ({ icon:l.icon, x:l.x, y:l.y, w:l.w, h:l.h, cat:l.cat, name:l.name, desc:l.desc, autoKey: !!l.autoKey, schedule: l.schedule || [], interactive: l.interactive === false ? false : true })),
     decor: {},
     carnivalSchedule: CARNIVAL_SCHEDULE,
     artists: ARTISTS
@@ -1313,7 +1318,7 @@ function buildHotspots(){
   LOCATIONS.forEach((loc, i) => {
     loc._id = i;
     const hs = document.createElement("div");
-    hs.className = `hotspot cat-${loc.cat}`;
+    hs.className = `hotspot cat-${loc.cat}` + (loc.interactive === false ? " non-interactive" : "");
     hs.dataset.id = i;
     hs.style.left = loc.x + "%";
     hs.style.top = loc.y + "%";
