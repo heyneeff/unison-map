@@ -210,7 +210,13 @@
     margin:0 0 3px; font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
     color:var(--gold); font-weight:bold;
   }
-  .card .schedule ul{ margin:0; padding:0; list-style:none; }
+  .card .schedule ul{ margin:0 0 6px; padding:0; list-style:none; }
+  .card .schedule ul:last-child{ margin-bottom:0; }
+  .card .schedule .schedule-day{
+    font-size:9px; text-transform:uppercase; letter-spacing:.07em; font-weight:bold;
+    color:var(--purple-dark); opacity:.7; margin:6px 0 2px;
+  }
+  .card .schedule .schedule-day:first-child{ margin-top:0; }
   .card .schedule li{
     display:flex; gap:6px; font-size:11.5px; line-height:1.4; color:var(--ink);
   }
@@ -528,9 +534,14 @@
   .modal-sched-group{ margin-bottom:14px; }
   .modal-sched-group:last-child{ margin-bottom:0; }
   .modal-sched-group h4{ margin:0 0 4px; color:var(--purple-dark); font-size:14px; }
+  .modal-sched-day{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; font-weight:bold;
+    color:var(--gold); opacity:.85; margin:8px 0 3px; padding-top:6px; border-top:1px dashed rgba(201,185,138,.4);
+  }
+  .modal-sched-day:first-of-type{ margin-top:0; padding-top:0; border-top:none; }
   .modal-sched-list{ margin:0 0 4px; padding:0; list-style:none; }
   .modal-sched-list li{ display:flex; gap:8px; font-size:13px; color:var(--ink); margin-bottom:3px; }
-  .modal-sched-list li .time{ font-weight:bold; color:var(--purple-dark); flex-shrink:0; min-width:82px; }
+  .modal-sched-list li .time{ font-weight:bold; color:var(--purple-dark); flex-shrink:0; min-width:118px; }
   .modal-sched-empty{ font-size:13px; color:#8a7a5a; font-style:italic; margin:0 0 8px; }
 
   /* ---------- schedule overlay: translucent card floating over the (possibly
@@ -837,58 +848,114 @@ function escapeHtml(s){
   return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 /* ---------- "happening now": best-effort live detection from each pin's
-   free-text schedule times (e.g. "6:00 PM"). No end time is stored, so an
-   entry's window runs until the next entry starts, or DEFAULT_DUR_MIN past
-   its own start if it's the last one for that pin. Unparseable times are
-   just skipped (never shown as live) rather than guessed at. ---------- */
+   free-text schedule entries, e.g. "Fri 6:00–7:15 PM" or plain "6:00 PM".
+   A leading day name (Thu/Fri/Sat/Sun/Mon/...) is matched against the
+   viewer's actual current weekday, since festival schedules span several
+   real days — without that, a Tuesday visitor would see a "Fri 3pm" set
+   marked live just because the clock time matches. Entries with no end
+   time run until the next entry starts, or DEFAULT_DUR_MIN past their own
+   start if last for that pin. Unparseable entries are just skipped (never
+   shown as live) rather than guessed at. ---------- */
 const LIVE_NOW_DEFAULT_DUR_MIN = 60;
-function parseTimeToMinutes(str){
-  if (!str) return null;
-  const s = str.trim().toLowerCase();
-  let hour, min = 0, ampm = null;
-  let m = s.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/);
-  if (m){
-    hour = parseInt(m[1], 10);
-    min = parseInt(m[2], 10);
-    ampm = m[3] || null;
-  } else {
-    m = s.match(/^(\d{1,2})\s*(am|pm)$/);
-    if (!m) return null;
-    hour = parseInt(m[1], 10);
-    ampm = m[2];
-  }
-  if (ampm === "am") { if (hour === 12) hour = 0; }
-  else if (ampm === "pm") { if (hour !== 12) hour += 12; }
-  if (hour > 23 || min > 59) return null;
+const DAY_INDEX = { sun:0, mon:1, tue:2, wed:3, thu:4, fri:5, sat:6 };
+function toMinutes(hour, min, ampm){
+  if (ampm === "pm" && hour !== 12) hour += 12;
+  else if (ampm === "am" && hour === 12) hour = 0;
   return hour * 60 + min;
+}
+/* Parses one clock time ("6", "6:00", "6pm", "6:00 PM") into {hour,min,ampm}. */
+function parseClock(raw){
+  const m = raw.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  if (!m) return null;
+  const hour = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  const ampm = m[3] ? m[3].toLowerCase() : null;
+  if (hour > 23 || min > 59) return null;
+  return { hour, min, ampm };
+}
+/* Parses a full schedule-entry string into { day, start, end } minutes-of-day,
+   inheriting the range's meridiem onto a bare start time (so "12:00–1:30 PM"
+   reads as noon, not midnight) and treating an end time smaller than the
+   start as spilling past midnight (so "11:30 PM–12:30 AM" runs 60min). */
+function parseScheduleEntry(str){
+  if (!str) return null;
+  const s = str.trim();
+  const dayMatch = s.match(/^(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s+(.+)$/i);
+  const day = dayMatch ? DAY_INDEX[dayMatch[1].toLowerCase()] : null;
+  const rest = dayMatch ? dayMatch[2] : s;
+  const rangeMatch = rest.match(/^([^\s–-]+(?:\s*(?:am|pm))?)\s*(?:[–-]\s*([^\s]+(?:\s*(?:am|pm))?))?$/i);
+  if (!rangeMatch) return null;
+  const startRaw = parseClock(rangeMatch[1]);
+  const endRaw = rangeMatch[2] ? parseClock(rangeMatch[2]) : null;
+  if (!startRaw) return null;
+  const endAmpm = endRaw ? endRaw.ampm : null;
+  const startAmpm = startRaw.ampm || endAmpm;
+  if (!startAmpm) return null;
+  const start = toMinutes(startRaw.hour, startRaw.min, startAmpm);
+  if (!endRaw) return { day, start, end: null };
+  const end = toMinutes(endRaw.hour, endRaw.min, endRaw.ampm || startAmpm);
+  return { day, start, end: end <= start ? end + 1440 : end };
 }
 function currentMinutes(){
   const d = new Date();
   return d.getHours() * 60 + d.getMinutes();
 }
 function findLiveEvent(schedule){
-  const items = (schedule || [])
-    .map(ev => ({ ev, start: parseTimeToMinutes(ev.time) }))
-    .filter(x => x.start !== null)
-    .sort((a, b) => a.start - b.start);
-  if (!items.length) return null;
+  const today = new Date().getDay();
   const now = currentMinutes();
+  const items = (schedule || [])
+    .map(ev => ({ ev, parsed: parseScheduleEntry(ev.time) }))
+    .filter(x => x.parsed && x.parsed.start !== null)
+    .sort((a, b) => (a.parsed.day ?? -1) - (b.parsed.day ?? -1) || a.parsed.start - b.parsed.start);
+  if (!items.length) return null;
   for (let i = 0; i < items.length; i++){
-    const end = (i + 1 < items.length) ? items[i + 1].start : items[i].start + LIVE_NOW_DEFAULT_DUR_MIN;
-    if (now >= items[i].start && now < end) return items[i].ev;
+    const { day, start } = items[i].parsed;
+    let end = items[i].parsed.end;
+    if (end === null){
+      const next = items[i + 1];
+      end = (next && next.parsed.day === day) ? next.parsed.start : start + LIVE_NOW_DEFAULT_DUR_MIN;
+    }
+    if (day === null || day === today){
+      if (now >= start && now < Math.min(end, 1440)) return items[i].ev;
+    }
+    if (end > 1440 && (day + 1) % 7 === today && now < end - 1440) return items[i].ev;
   }
   return null;
+}
+/* Groups already-ordered schedule entries under their leading day name, so
+   a 15-20 row multi-day lineup reads as "Fri / Sat / Sun" sections instead
+   of one undifferentiated wall of rows. Entries with no day prefix fall
+   into a single unlabeled group. */
+function groupScheduleByDay(sched){
+  const groups = [];
+  let current = null;
+  sched.forEach(ev => {
+    const m = (ev.time || "").trim().match(/^(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s+/i);
+    const label = m ? m[1][0].toUpperCase() + m[1].slice(1).toLowerCase() : null;
+    if (!current || current.label !== label){
+      current = { label, items: [] };
+      groups.push(current);
+    }
+    current.items.push(ev);
+  });
+  return groups;
+}
+function scheduleEntryHtml(ev, isLive, stripDay){
+  const liveTag = isLive ? ` <span class="live-tag">&#9679; Live</span>` : "";
+  const time = stripDay ? ev.time.replace(/^(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s+/i, "") : ev.time;
+  return `<li class="${isLive ? "live-now" : ""}"><span class="time">${escapeHtml(time)}</span><span>${escapeHtml(ev.title)}${liveTag}</span></li>`;
 }
 function scheduleListHtml(loc){
   const sched = loc.schedule || [];
   if (!sched.length) return "";
   const live = findLiveEvent(sched);
-  const items = sched.map(ev => {
-    const isLive = live === ev;
-    const liveTag = isLive ? ` <span class="live-tag">&#9679; Live</span>` : "";
-    return `<li class="${isLive ? "live-now" : ""}"><span class="time">${escapeHtml(ev.time)}</span><span>${escapeHtml(ev.title)}${liveTag}</span></li>`;
+  const groups = groupScheduleByDay(sched);
+  const body = groups.map(g => {
+    const items = g.items.map(ev => scheduleEntryHtml(ev, live === ev, !!g.label)).join("");
+    const heading = g.label ? `<div class="schedule-day">${g.label}</div>` : "";
+    return `${heading}<ul>${items}</ul>`;
   }).join("");
-  return `<div class="schedule"><h4>Schedule</h4><ul>${items}</ul></div>`;
+  return `<div class="schedule"><h4>Schedule</h4>${body}</div>`;
 }
 // Refreshes the persistent on-map "live" pulse + each open card's schedule
 // list on an interval, without rebuilding the pins (which would drop
@@ -1638,10 +1705,17 @@ function renderStageSchedule(){
   }
   el.innerHTML = stagePins.map(loc => {
     const sched = loc.schedule || [];
+    const live = findLiveEvent(sched);
     const body = sched.length
-      ? `<ul class="modal-sched-list">${sched.map(ev =>
-          `<li><span class="time">${escapeHtml(ev.time)}</span><span>${escapeHtml(ev.title)}</span></li>`
-        ).join("")}</ul>`
+      ? groupScheduleByDay(sched).map(g => {
+          const items = g.items.map(ev => {
+            const liveTag = live === ev ? ` <span class="live-tag">&#9679; Live</span>` : "";
+            const time = g.label ? ev.time.replace(/^(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s+/i, "") : ev.time;
+            return `<li><span class="time">${escapeHtml(time)}</span><span>${escapeHtml(ev.title)}${liveTag}</span></li>`;
+          }).join("");
+          const heading = g.label ? `<div class="modal-sched-day">${g.label}</div>` : "";
+          return `${heading}<ul class="modal-sched-list">${items}</ul>`;
+        }).join("")
       : `<p class="modal-sched-empty">No events scheduled yet.</p>`;
     return `<div class="modal-sched-group"><h4>${escapeHtml(loc.name)}</h4>${body}</div>`;
   }).join("");
