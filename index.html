@@ -345,6 +345,9 @@
   .toolbar .rotate-box{ display:none; align-items:center; gap:6px; }
   .toolbar .rotate-box.show{ display:flex; }
   .toolbar .rotate-box input[type=range]{ width:140px; }
+  .toolbar .layer-box{ display:none; align-items:center; gap:6px; }
+  .toolbar .layer-box.show{ display:flex; }
+  .toolbar .layer-box button{ padding:4px 12px; font-size:15px; font-weight:bold; line-height:1; }
 
   .edit-fields{
     display:none;
@@ -671,6 +674,11 @@
     <div class="rotate-box" id="rotate-box">
       <label>Rotate: <input type="range" id="rotate-slider" min="0" max="359" value="0"></label>
       <span id="rotate-readout">0°</span>
+    </div>
+    <div class="layer-box" id="layer-box">
+      <label>Layer:</label>
+      <button type="button" id="btn-layer-back" title="Send backward (behind overlapping icons)">−</button>
+      <button type="button" id="btn-layer-front" title="Bring forward (in front of overlapping icons)">+</button>
     </div>
     <span class="sel-info" id="sel-info">Drag an icon to move it. Drag its white dot to resize.</span>
     <span class="sel-info" id="sync-status"></span>
@@ -1187,6 +1195,7 @@ function selectElement(el, data, opts){
   } else {
     rotBox.classList.remove("show");
   }
+  document.getElementById("layer-box").classList.toggle("show", !!opts.isLocation);
   if (opts.isLocation){
     fields.classList.add("show");
     nameField.value = data.name;
@@ -1501,6 +1510,7 @@ document.getElementById("btn-toggle-edit").addEventListener("click", (e) => {
   document.querySelectorAll(".selected").forEach(n => n.classList.remove("selected"));
   document.getElementById("edit-fields").classList.remove("show");
   document.getElementById("rotate-box").classList.remove("show");
+  document.getElementById("layer-box").classList.remove("show");
   selected = null;
   resetZoom();
 });
@@ -1510,6 +1520,7 @@ frame.addEventListener("click", (e) => {
   document.querySelectorAll(".selected").forEach(n => n.classList.remove("selected"));
   document.getElementById("edit-fields").classList.remove("show");
   document.getElementById("rotate-box").classList.remove("show");
+  document.getElementById("layer-box").classList.remove("show");
   selected = null;
 });
 document.getElementById("btn-reset").addEventListener("click", () => location.reload());
@@ -1873,8 +1884,24 @@ document.getElementById("btn-delete-pin").addEventListener("click", () => {
   selected = null;
   document.getElementById("edit-fields").classList.remove("show");
   document.getElementById("rotate-box").classList.remove("show");
+  document.getElementById("layer-box").classList.remove("show");
   rebuildMap();
 });
+
+document.getElementById("btn-layer-back").addEventListener("click", () => moveSelectedLayer(-1));
+document.getElementById("btn-layer-front").addEventListener("click", () => moveSelectedLayer(1));
+function moveSelectedLayer(dir){
+  if (!selected || !selected.opts.isLocation) return;
+  const i = LOCATIONS.indexOf(selected.data);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= LOCATIONS.length) return;
+  LOCATIONS[i] = LOCATIONS[j];
+  LOCATIONS[j] = selected.data;
+  buildHotspots();
+  const hs = frame.querySelector(`.hotspot[data-id="${j}"]`);
+  if (hs) selectElement(hs, selected.data, { rotatable:false, label:selected.data.name, isLocation:true });
+  saveLayout();
+}
 
 // ---- initial render ----
 // Rendering immediately from local/built-in data and then rebuilding again
