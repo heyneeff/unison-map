@@ -101,6 +101,9 @@
      its icon and can be dragged in edit mode, but is inert to hover/click for
      visitors — for pins that are purely decorative map dressing. */
   body:not(.editing) .hotspot.non-interactive{ pointer-events:none; }
+  /* purely decorative pins don't do the idle "dancy" bump either — they're
+     scenery, not something visitors are meant to notice as alive. */
+  .hotspot.non-interactive{ animation:none; }
 
   .hotspot, .decor{
     position:absolute;
@@ -378,6 +381,12 @@
   .schedule-block > .block-label{
     font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:#cbb98a;
   }
+  .schedule-toggle{
+    background:none; border:none; padding:0; text-align:left; cursor:pointer;
+    font-family:Georgia,serif;
+  }
+  .schedule-toggle:hover{ color:var(--gold); }
+  .schedule-editor-body{ display:flex; flex-direction:column; gap:6px; }
   .schedule-rows{ display:flex; flex-direction:column; gap:5px; }
   .schedule-row{ display:flex; gap:6px; align-items:center; }
   .schedule-row input.time-input{
@@ -679,9 +688,11 @@
     <label>Description<textarea id="field-desc" placeholder="What's here?" rows="2"></textarea></label>
     <label class="checkbox-label"><input type="checkbox" id="field-autokey"> Remove white background automatically</label>
     <div class="schedule-block">
-      <div class="block-label">Schedule of events (optional)</div>
-      <div class="schedule-rows" id="schedule-rows"></div>
-      <button type="button" id="btn-add-event">+ Add event</button>
+      <button type="button" class="block-label schedule-toggle" id="btn-toggle-schedule">Schedule of events ▸</button>
+      <div class="schedule-editor-body" id="schedule-editor-body" hidden>
+        <div class="schedule-rows" id="schedule-rows"></div>
+        <button type="button" id="btn-add-event">+ Add event</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1182,6 +1193,8 @@ function selectElement(el, data, opts){
     catField.value = data.cat;
     descField.value = data.desc;
     autoKeyField.checked = !!data.autoKey;
+    document.getElementById("schedule-editor-body").hidden = true;
+    updateScheduleToggleLabel();
     renderScheduleEditor();
   } else {
     fields.classList.remove("show");
@@ -1200,6 +1213,21 @@ function refreshCardSchedule(){
   saveLayout();
 }
 
+/* Collapsed by default on every selection (see selectLocation) so grabbing
+   a pin with a long lineup — Main Stage, Sacred Fire — to drag it doesn't
+   pop open a screen's worth of time/title rows first. */
+function updateScheduleToggleLabel(){
+  const toggle = document.getElementById("btn-toggle-schedule");
+  const open = !document.getElementById("schedule-editor-body").hidden;
+  const count = (selected && selected.opts.isLocation) ? (selected.data.schedule || []).length : 0;
+  const suffix = count ? ` (${count})` : " (optional)";
+  toggle.textContent = `Schedule of events${suffix} ${open ? "▾" : "▸"}`;
+}
+document.getElementById("btn-toggle-schedule").addEventListener("click", () => {
+  const body = document.getElementById("schedule-editor-body");
+  body.hidden = !body.hidden;
+  updateScheduleToggleLabel();
+});
 function renderScheduleEditor(){
   const container = document.getElementById("schedule-rows");
   container.innerHTML = "";
@@ -1223,9 +1251,11 @@ function renderScheduleEditor(){
       sched.splice(idx, 1);
       renderScheduleEditor();
       refreshCardSchedule();
+      updateScheduleToggleLabel();
     });
     container.appendChild(row);
   });
+  updateScheduleToggleLabel();
 }
 document.getElementById("btn-add-event").addEventListener("click", () => {
   if (!selected || !selected.opts.isLocation) return;
