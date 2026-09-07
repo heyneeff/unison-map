@@ -152,6 +152,20 @@
   .cat-utility .ring{ border-color:var(--green); }
   .cat-food .ring{ border-color:var(--orange); }
 
+  /* ---------- "happening now": ambient pulse on any pin with a live
+     schedule entry, so it's visible on the map without hovering. Wins
+     over the category ring color (defined above) and the hover-only
+     opacity (defined below it) since it's declared last. ---------- */
+  .hotspot.live-now .ring{
+    opacity:.9;
+    border-color:var(--gold);
+    animation:live-now-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes live-now-pulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(201,150,47,.55); }
+    50%{ box-shadow:0 0 0 9px rgba(201,150,47,0); }
+  }
+
   .card{
     position:absolute;
     bottom:calc(100% + 8px);
@@ -197,6 +211,17 @@
   }
   .card .schedule li .time{
     font-weight:bold; color:var(--purple-dark); flex-shrink:0; white-space:nowrap;
+  }
+  .card .schedule li.live-now{
+    background:rgba(201,150,47,.16);
+    border-radius:5px;
+    padding:1px 4px;
+    margin:0 -4px;
+  }
+  .card .live-tag{
+    display:inline-block; margin-left:2px;
+    font-size:9px; font-weight:bold; letter-spacing:.03em;
+    color:var(--crimson);
   }
 
   .logo-anim img.piece{ animation:logo-float 6s ease-in-out infinite; }
@@ -746,7 +771,7 @@ const LOCATIONS = [
   { icon:"moon.png", x:59.462, y:34.762, w:6.909, h:4.588, cat:"play", name:"[Moon]", desc:"Add a description." },
   { icon:"slide_tower.png", x:53.748, y:38.979, w:11.382, h:6.139, cat:"play", name:"[Slide]", desc:"Add a description." },
   { icon:"small_dock.png", x:36.432, y:25.275, w:8.724, h:4.806, cat:"play", name:"[Dock]", desc:"Add a description." },
-  { icon:"mandala_wreath.png", x:83.775, y:25.647, w:9.389, h:5.519, cat:"sanctuary", name:"[Mandala]", desc:"Add a description." },
+  { icon:"mandala_wreath.png", x:83.775, y:25.647, w:9.389, h:5.519, cat:"art", name:"Nature Mandala", desc:"By Ramona Teo. A large radial earthwork of stone, sticks, flowers, and shells, laid as a blessing for the land." },
   { icon:"cream_tents_cluster.png", x:84.218, y:30.918, w:10.319, h:7.503, cat:"market", name:"[Market Tents]", desc:"Add a description." },
   { icon:"goddess_egg_statue.png", x:71.552, y:26.608, w:9.212, h:6.511, cat:"sanctuary", name:"[Goddess Statue]", desc:"Add a description." },
   { icon:"water_slide.png", x:35.150, y:29.757, w:5.923, h:10.286, cat:"play", name:"[Water Slide]", desc:"Add a description." },
@@ -757,9 +782,9 @@ const LOCATIONS = [
   { icon:"purple_tent_stall_a.png", x:6.759, y:46.264, w:8.902, h:5.394, cat:"market", name:"[Vendor Stall]", desc:"Add a description." },
   { icon:"yellow_food_truck.png", x:29.258, y:44.714, w:9.876, h:5.178, cat:"market", name:"[Food Truck]", desc:"Add a description." },
   { icon:"purple_poncho.png", x:59.328, y:45.490, w:6.732, h:5.735, cat:"market", name:"[Clothing Vendor]", desc:"Add a description." },
-  { icon:"marigold_flower.png", x:73.766, y:44.559, w:6.909, h:5.519, cat:"sanctuary", name:"[Marigold Patch]", desc:"Add a description." },
+  { icon:"marigold_flower.png", x:73.766, y:44.559, w:6.909, h:5.519, cat:"art", name:"The Marigold Den", desc:"By Andrew Waytashek. A bell tent hung with marigold garlands around four earthen altars." },
   { icon:"signup_chalkboard.png", x:33.332, y:50.202, w:4.207, h:5.023, cat:"market", name:"[Sign-Up Board]", desc:"Add a description." },
-  { icon:"hug_statue.png", x:51.445, y:51.659, w:6.289, h:5.674, cat:"sanctuary", name:"[Hug Statue]", desc:"Add a description." },
+  { icon:"hug_statue.png", x:51.445, y:51.659, w:6.289, h:5.674, cat:"art", name:"The Hug Bar", desc:"By Tahir Haseebullah Tahir. Pay for a hug with a compliment to a stranger — five hug varieties on offer." },
   { icon:"flying_carpet.png", x:61.543, y:51.970, w:11.382, h:4.929, cat:"stage", name:"[Flying Carpet]", desc:"Add a description." },
   { icon:"watchtower_stage.png", x:60.215, y:54.449, w:16.077, h:12.185, cat:"stage", name:"[Main Stage]", desc:"Add a description." },
   { icon:"restroom.png", x:7.025, y:60.154, w:8.459, h:5.364, cat:"amenity", name:"[Restrooms]", desc:"Add a description." },
@@ -768,13 +793,13 @@ const LOCATIONS = [
   { icon:"purple_pavilion.png", x:7.822, y:66.789, w:12.046, h:7.441, cat:"sanctuary", name:"[Pavilion]", desc:"Add a description." },
   { icon:"sun_orb_sculpture.png", x:25.493, y:66.355, w:6.997, h:5.488, cat:"sanctuary", name:"[Sun Orb]", desc:"Add a description." },
   { icon:"campfire.png", x:45.378, y:66.324, w:4.739, h:3.224, cat:"stage", name:"[Campfire Circle]", desc:"Add a description." },
-  { icon:"snakes_statue.png", x:58.797, y:68.990, w:9.123, h:6.325, cat:"sanctuary", name:"[Snakes Statue]", desc:"Add a description." },
+  { icon:"snakes_statue.png", x:58.797, y:68.990, w:9.123, h:6.325, cat:"art", name:"Temple of the Two-Headed Serpent", desc:"By Sam Schofield. A phone booth disguised as a temple — dial in and leave a message for the dead." },
   { icon:"earth_hands_sculpture.png", x:71.818, y:67.068, w:9.832, h:6.914, cat:"sanctuary", name:"[Earth & Hands]", desc:"Add a description." },
   { icon:"canopy_lounge.png", x:6.892, y:73.796, w:9.744, h:6.697, cat:"sanctuary", name:"[Chill Lounge]", desc:"Add a description." },
   { icon:"puzzle_cube.png", x:23.500, y:73.051, w:7.883, h:5.519, cat:"sanctuary", name:"[Puzzle Cube]", desc:"Add a description." },
   { icon:"dark_ceremony_yurt.png", x:64.422, y:77.547, w:12.400, h:9.301, cat:"sanctuary", name:"[Ceremony Tent]", desc:"Add a description." },
   { icon:"eye_sculpture.png", x:22.127, y:79.190, w:9.610, h:5.519, cat:"sanctuary", name:"[Eye Sculpture]", desc:"Add a description." },
-  { icon:"wizard_portal.png", x:17.388, y:84.461, w:11.204, h:7.379, cat:"sanctuary", name:"[Portal]", desc:"Add a description." },
+  { icon:"wizard_portal.png", x:17.388, y:84.461, w:11.204, h:7.379, cat:"art", name:"girlwizard's Portal", desc:"By Austin Torrez. An interactive CRT-television sculpture looping soft, mellow, healing footage." },
   { icon:"sports_court.png", x:6.228, y:84.709, w:10.807, h:9.456, cat:"amenity", name:"[Sports Court]", desc:"Add a description." },
 ];
 
@@ -806,13 +831,76 @@ const CAT_LABELS = {
 function escapeHtml(s){
   return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
+/* ---------- "happening now": best-effort live detection from each pin's
+   free-text schedule times (e.g. "6:00 PM"). No end time is stored, so an
+   entry's window runs until the next entry starts, or DEFAULT_DUR_MIN past
+   its own start if it's the last one for that pin. Unparseable times are
+   just skipped (never shown as live) rather than guessed at. ---------- */
+const LIVE_NOW_DEFAULT_DUR_MIN = 60;
+function parseTimeToMinutes(str){
+  if (!str) return null;
+  const s = str.trim().toLowerCase();
+  let hour, min = 0, ampm = null;
+  let m = s.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/);
+  if (m){
+    hour = parseInt(m[1], 10);
+    min = parseInt(m[2], 10);
+    ampm = m[3] || null;
+  } else {
+    m = s.match(/^(\d{1,2})\s*(am|pm)$/);
+    if (!m) return null;
+    hour = parseInt(m[1], 10);
+    ampm = m[2];
+  }
+  if (ampm === "am") { if (hour === 12) hour = 0; }
+  else if (ampm === "pm") { if (hour !== 12) hour += 12; }
+  if (hour > 23 || min > 59) return null;
+  return hour * 60 + min;
+}
+function currentMinutes(){
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+function findLiveEvent(schedule){
+  const items = (schedule || [])
+    .map(ev => ({ ev, start: parseTimeToMinutes(ev.time) }))
+    .filter(x => x.start !== null)
+    .sort((a, b) => a.start - b.start);
+  if (!items.length) return null;
+  const now = currentMinutes();
+  for (let i = 0; i < items.length; i++){
+    const end = (i + 1 < items.length) ? items[i + 1].start : items[i].start + LIVE_NOW_DEFAULT_DUR_MIN;
+    if (now >= items[i].start && now < end) return items[i].ev;
+  }
+  return null;
+}
 function scheduleListHtml(loc){
   const sched = loc.schedule || [];
   if (!sched.length) return "";
-  const items = sched.map(ev =>
-    `<li><span class="time">${escapeHtml(ev.time)}</span><span>${escapeHtml(ev.title)}</span></li>`
-  ).join("");
+  const live = findLiveEvent(sched);
+  const items = sched.map(ev => {
+    const isLive = live === ev;
+    const liveTag = isLive ? ` <span class="live-tag">&#9679; Live</span>` : "";
+    return `<li class="${isLive ? "live-now" : ""}"><span class="time">${escapeHtml(ev.time)}</span><span>${escapeHtml(ev.title)}${liveTag}</span></li>`;
+  }).join("");
   return `<div class="schedule"><h4>Schedule</h4><ul>${items}</ul></div>`;
+}
+// Refreshes the persistent on-map "live" pulse + each open card's schedule
+// list on an interval, without rebuilding the pins (which would drop
+// whichever card a visitor currently has hovered/active).
+function updateLiveHighlights(){
+  LOCATIONS.forEach(loc => {
+    if (!loc.schedule || !loc.schedule.length) return;
+    const hs = frame.querySelector(`.hotspot[data-id="${loc._id}"]`);
+    if (!hs) return;
+    hs.classList.toggle("live-now", !!findLiveEvent(loc.schedule));
+    const schedEl = hs.querySelector(".card .schedule");
+    if (schedEl){
+      const wrap = document.createElement("div");
+      wrap.innerHTML = scheduleListHtml(loc);
+      if (wrap.firstElementChild) schedEl.replaceWith(wrap.firstElementChild);
+    }
+  });
 }
 
 const frame = document.getElementById("map-frame");
@@ -1712,6 +1800,7 @@ function revealMap(){
     buildHotspots();
     buildDecor();
     buildKeyPanel();
+    updateLiveHighlights();
   }
 
   if (first === timedOut){
@@ -1723,6 +1812,7 @@ function revealMap(){
   await waitForBg();
   revealMap();
 })();
+setInterval(updateLiveHighlights, 30000);
 </script>
 
 </body>
