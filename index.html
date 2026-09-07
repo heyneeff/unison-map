@@ -542,6 +542,14 @@
   .modal-sched-list{ margin:0 0 4px; padding:0; list-style:none; }
   .modal-sched-list li{ display:flex; gap:8px; font-size:13px; color:var(--ink); margin-bottom:3px; }
   .modal-sched-list li .time{ font-weight:bold; color:var(--purple-dark); flex-shrink:0; min-width:118px; }
+  .modal-sched-list.artist-list li{ margin-bottom:1px; }
+  .modal-sched-list .artist-link{
+    display:block; width:100%; text-align:left; font-family:Georgia,serif;
+    font-size:13.5px; color:inherit; background:none; border:none; cursor:pointer;
+    padding:5px 6px; border-radius:6px;
+  }
+  .modal-sched-list .artist-link:hover{ background:rgba(201,150,47,.18); }
+  .schedule-overlay-card .modal-sched-list .artist-link:hover{ background:rgba(255,255,255,.12); }
   .modal-sched-empty{ font-size:13px; color:#8a7a5a; font-style:italic; margin:0 0 8px; }
 
   /* ---------- schedule overlay: translucent card floating over the (possibly
@@ -724,7 +732,6 @@
       <h3>Artist Lineup</h3>
       <div class="modal-sched-scroll" id="artist-lineup-content"></div>
       <div class="modal-actions">
-        <button id="btn-add-artist" class="edit-only-btn" style="display:none; margin-right:auto;">+ Add artist</button>
         <button id="btn-close-artist-lineup">Close</button>
       </div>
     </div>
@@ -1730,48 +1737,44 @@ document.getElementById("btn-close-stage-schedule").addEventListener("click", ()
   resetZoom();
 });
 
-// ---- Artist Lineup (its own name list, not tied to a pin, no zoom target) ----
+// ---- Artist Lineup (auto-built from every "art" pin — click a name to jump
+// to that installation on the map, the same way Stage Schedule is built
+// from stage pins. Installations are added/renamed via the pin editor, not
+// here, so there's no add/remove UI in this modal. ----
+function jumpToLocation(loc){
+  document.getElementById("artist-lineup-overlay").classList.remove("show");
+  zoomTo(loc.x, loc.y, 2.4);
+  const hs = frame.querySelector(`.hotspot[data-id="${loc._id}"]`);
+  if (hs){
+    document.querySelectorAll(".hotspot.active").forEach(p => p.classList.remove("active"));
+    hs.classList.add("active");
+    positionCard(hs);
+  }
+}
 function renderArtistLineup(){
   const el = document.getElementById("artist-lineup-content");
-  const addBtn = document.getElementById("btn-add-artist");
-  const editing = document.body.classList.contains("editing");
-  addBtn.style.display = editing ? "inline-block" : "none";
-  if (!editing){
-    el.innerHTML = ARTISTS.length
-      ? `<ul class="modal-sched-list">${ARTISTS.map(a => `<li>${escapeHtml(a.name)}</li>`).join("")}</ul>`
-      : `<p class="modal-sched-empty">No artists announced yet.</p>`;
+  const artPins = LOCATIONS.filter(l => l.cat === "art");
+  if (!artPins.length){
+    el.innerHTML = `<p class="modal-sched-empty">No installations on the map yet.</p>`;
     return;
   }
-  el.innerHTML = "";
-  if (!ARTISTS.length){
-    el.innerHTML = `<p class="modal-sched-empty">No artists yet — add one below.</p>`;
-  }
-  ARTISTS.forEach((a, idx) => {
-    const row = document.createElement("div");
-    row.className = "schedule-row";
-    row.innerHTML = `<input type="text" class="title-input" placeholder="Artist name"><button type="button">Remove</button>`;
-    const nameInput = row.querySelector(".title-input");
-    nameInput.value = a.name || "";
-    nameInput.addEventListener("input", () => { a.name = nameInput.value; saveLayout(); });
-    row.querySelector("button").addEventListener("click", () => {
-      ARTISTS.splice(idx, 1);
-      renderArtistLineup();
-      saveLayout();
+  el.innerHTML = `<ul class="modal-sched-list artist-list">${artPins.map(loc =>
+    `<li><button type="button" class="artist-link" data-id="${loc._id}">${escapeHtml(loc.name)}</button></li>`
+  ).join("")}</ul>`;
+  el.querySelectorAll(".artist-link").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const loc = LOCATIONS[parseInt(btn.dataset.id, 10)];
+      if (loc) jumpToLocation(loc);
     });
-    el.appendChild(row);
   });
 }
-document.getElementById("btn-add-artist").addEventListener("click", () => {
-  ARTISTS.push({ name:"" });
-  renderArtistLineup();
-  saveLayout();
-});
 document.getElementById("btn-artist-lineup").addEventListener("click", () => {
   renderArtistLineup();
   document.getElementById("artist-lineup-overlay").classList.add("show");
 });
 document.getElementById("btn-close-artist-lineup").addEventListener("click", () => {
   document.getElementById("artist-lineup-overlay").classList.remove("show");
+  resetZoom();
 });
 
 // ---- Carnival Schedule (its own event list, not tied to a pin) ----
