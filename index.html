@@ -1405,7 +1405,7 @@ function buildHotspots(){
       <img class="piece" src="icons/${loc.icon}" alt="${loc.name}">
       <div class="card">
         <h3>${loc.name}</h3>
-        <p>${loc.desc}</p>
+        ${loc.desc && loc.desc !== "Add a description." ? `<p>${loc.desc}</p>` : ""}
         ${scheduleListHtml(loc)}
         <span class="cat-label">${CAT_LABELS[loc.cat]}</span>
       </div>
