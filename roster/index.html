@@ -1,0 +1,665 @@
+<title>Unison Installation Roster</title>
+<style>
+  :root{
+    --bg: #EFE9D8;
+    --bg-raised: #FBF8EF;
+    --ink: #262019;
+    --ink-soft: #524A3B;
+    --muted: #7A7263;
+    --line: #D9D0B9;
+    --accent: #1F6E63;
+    --accent-ink: #F3F8F6;
+    --tag-power: #C1502D;
+    --tag-power-bg: #F6E4DB;
+    --tag-return: #1F6E63;
+    --tag-return-bg: #DEECE8;
+    --shadow: 0 1px 0 rgba(38,32,25,.06);
+    --focus: #1F6E63;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #191E1B;
+      --bg-raised: #212925;
+      --ink: #EFE9D8;
+      --ink-soft: #C9C2AE;
+      --muted: #8D9691;
+      --line: #34413B;
+      --accent: #6FC7B7;
+      --accent-ink: #0F1613;
+      --tag-power: #E28966;
+      --tag-power-bg: #3A2A22;
+      --tag-return: #6FC7B7;
+      --tag-return-bg: #1E332E;
+      --shadow: 0 1px 0 rgba(0,0,0,.3);
+      --focus: #6FC7B7;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #191E1B;
+    --bg-raised: #212925;
+    --ink: #EFE9D8;
+    --ink-soft: #C9C2AE;
+    --muted: #8D9691;
+    --line: #34413B;
+    --accent: #6FC7B7;
+    --accent-ink: #0F1613;
+    --tag-power: #E28966;
+    --tag-power-bg: #3A2A22;
+    --tag-return: #6FC7B7;
+    --tag-return-bg: #1E332E;
+    --shadow: 0 1px 0 rgba(0,0,0,.3);
+    --focus: #6FC7B7;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    line-height:1.5;
+  }
+  ::selection{ background:var(--accent); color:var(--accent-ink); }
+  a{ color:var(--accent); }
+  :focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+
+  .wrap{ max-width:920px; margin:0 auto; padding:2.5rem 1.5rem 5rem; }
+
+  header.masthead{
+    border-bottom:1px solid var(--line);
+    padding-bottom:1.5rem;
+    margin-bottom:1.75rem;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.72rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 .6rem;
+  }
+  h1{
+    font-family:'Newsreader', Georgia, serif;
+    font-weight:600;
+    font-size:clamp(1.9rem, 4vw, 2.6rem);
+    line-height:1.1;
+    margin:0 0 .5rem;
+    text-wrap:balance;
+    letter-spacing:-.01em;
+  }
+  .sub{
+    color:var(--ink-soft);
+    font-size:1rem;
+    max-width:60ch;
+    margin:0;
+  }
+  .sub strong{ color:var(--ink); font-weight:600; }
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    margin-top:1.5rem;
+  }
+  .stat{
+    background:var(--bg-raised);
+    padding:.85rem 1rem;
+  }
+  .stat .n{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:1.5rem;
+    font-weight:500;
+    font-variant-numeric:tabular-nums;
+    display:block;
+  }
+  .stat .l{
+    font-size:.72rem;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.6rem;
+    align-items:center;
+    margin:1.75rem 0 1.25rem;
+  }
+  #search{
+    flex:1 1 220px;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:.55rem .75rem;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:.9rem;
+    border-radius:3px;
+  }
+  #search::placeholder{ color:var(--muted); }
+  .toggle{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.75rem;
+    letter-spacing:.03em;
+    border:1px solid var(--line);
+    background:var(--bg-raised);
+    color:var(--ink-soft);
+    padding:.5rem .7rem;
+    border-radius:3px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .toggle[aria-pressed="true"]{
+    background:var(--accent);
+    color:var(--accent-ink);
+    border-color:var(--accent);
+  }
+  #count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.75rem;
+    color:var(--muted);
+    margin-left:auto;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+  }
+  .card{
+    background:var(--bg-raised);
+    padding:1.25rem 1.4rem;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:.6rem;
+  }
+  .card[hidden]{ display:none; }
+
+  .card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:1rem;
+    flex-wrap:wrap;
+  }
+  .card h2{
+    font-family:'Newsreader', Georgia, serif;
+    font-weight:600;
+    font-size:1.25rem;
+    margin:0;
+    text-wrap:balance;
+  }
+  .byline{
+    font-size:.82rem;
+    color:var(--muted);
+    white-space:nowrap;
+  }
+  .byline .loc::before{ content:"· "; }
+
+  .tags{ display:flex; gap:.4rem; flex-wrap:wrap; }
+  .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.68rem;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    padding:.18rem .5rem;
+    border-radius:999px;
+  }
+  .tag.power{ background:var(--tag-power-bg); color:var(--tag-power); }
+  .tag.return{ background:var(--tag-return-bg); color:var(--tag-return); }
+
+  .blurb{
+    font-family:'Newsreader', Georgia, serif;
+    font-size:1rem;
+    color:var(--ink-soft);
+    max-width:68ch;
+    margin:0;
+  }
+
+  .facts{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.4rem 1.6rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.78rem;
+    color:var(--muted);
+    margin-top:.15rem;
+  }
+  .facts b{ color:var(--ink-soft); font-weight:500; }
+
+  .note{
+    font-size:.82rem;
+    color:var(--muted);
+    border-left:2px solid var(--line);
+    padding-left:.7rem;
+    margin-top:.1rem;
+  }
+
+  .contact{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.3rem .9rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.76rem;
+    padding-top:.5rem;
+    border-top:1px solid var(--line);
+    margin-top:.15rem;
+  }
+  .contact a{
+    color:var(--ink-soft);
+    text-decoration:none;
+    border-bottom:1px solid var(--line);
+  }
+  .contact a:hover, .contact a:focus-visible{
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+  }
+
+  footer{
+    margin-top:2.5rem;
+    padding-top:1.25rem;
+    border-top:1px solid var(--line);
+    font-size:.78rem;
+    color:var(--muted);
+  }
+
+  @media (max-width: 560px){
+    .stats{ grid-template-columns:repeat(2,1fr); }
+    .card-head{ flex-direction:column; align-items:flex-start; gap:.2rem; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Unison Festival · Tico Time River Resort · Sep 10–14, 2026</p>
+    <h1>Installation Artist Roster</h1>
+    <p class="sub">Every art-installation application received to date, cleaned up from the raw submission sheet — <strong>for mapping the grounds and planning power &amp; passes.</strong></p>
+    <div class="stats">
+      <div class="stat"><span class="n" id="stat-total">18</span><span class="l">Submissions</span></div>
+      <div class="stat"><span class="n" id="stat-power">10</span><span class="l">Need Power</span></div>
+      <div class="stat"><span class="n" id="stat-return">13</span><span class="l">Returning Artists</span></div>
+      <div class="stat"><span class="n" id="stat-crew">45</span><span class="l">Crew, Total</span></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <input id="search" type="text" placeholder="Search by name, artist, or theme…" aria-label="Search installations">
+    <button class="toggle" id="filter-power" aria-pressed="false">⚡ Needs power</button>
+    <button class="toggle" id="filter-return" aria-pressed="false">↺ Returning</button>
+    <span id="count"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    Compiled from the Unison 2026 installation-artist submission form. Footprints, power notes, and pass requests are as stated by each applicant — confirm before final placement.
+  </footer>
+</div>
+
+<script>
+const installations = [
+  {
+    name: "Free Festival Clothing Swap Tent",
+    artist: "Elizabeth Tatera",
+    loc: "Moab, UT",
+    power: false,
+    returning: false,
+    crew: "2 (self + partner)",
+    footprint: "10 × 10 ft",
+    powerNote: "None needed",
+    blurb: "Trade a piece of festival clothing for something new from the rack — the tent restocks all weekend as people swap in and out. Requests a tucked-away spot, apart from clothing vendors, so it reads as a discovery rather than a shop.",
+    note: null,
+    contact: { email: "elizabethtatera@gmail.com", phone: "907-841-5534", links: [] }
+  },
+  {
+    name: "The Transformation Station",
+    artist: "Shiphrah Campbell",
+    loc: "Taos, NM",
+    power: true,
+    returning: true,
+    crew: "2 (self + helper)",
+    footprint: "~10 × 10 ft, 8 ft tall (modular)",
+    powerNote: "Brings own generator",
+    blurb: "A body-art tent — glitter, shimmer, and adornment turning festivalgoers into goddesses, creatures, or whatever they imagine. Prior stops: She Rises, Unison, Southwest Flow, Gaia's Gathering, Bones & Blossoms.",
+    note: null,
+    contact: { email: "acutetremonts@gmail.com", phone: "720-384-4933", links: [
+      { label: "Instagram", url: "https://www.instagram.com/acutetremonts_body_art" },
+      { label: "Facebook", url: "https://www.facebook.com/Acutetremonts" },
+      { label: "acutetremonts.com", url: "http://acutetremonts.com" }
+    ] }
+  },
+  {
+    name: "Baba Yaga's Tea Hut",
+    artist: "Millicent \"Millie\" MacDonald",
+    loc: "Aztec, NM",
+    power: true,
+    returning: true,
+    crew: "8 (full crew set)",
+    footprint: "10 × 30 ft",
+    powerNote: "Kettles + lighting",
+    blurb: "Donation-based late-night tea lounge next to the pavilion — a grounding stop between sets. Returning after Unison 2025. Requesting 8 passes, since two staff are needed on shift every night to run it.",
+    note: "Asked about continued monetary support to expand the tea selection.",
+    contact: { email: "milliemac36@gmail.com", phone: "231-679-6192", links: [
+      { label: "Instagram", url: "https://www.instagram.com/baba-yagas-tea-hut" }
+    ] }
+  },
+  {
+    name: "The Marigold Den",
+    artist: "Andrew Waytashek",
+    loc: "Taos, NM",
+    power: true,
+    returning: true,
+    crew: "5",
+    footprint: "16 ft bell tent (19 ft staked)",
+    powerNote: "One 120v outlet, evening lighting",
+    blurb: "A bell tent hung with marigold garlands around four earthen altars, with baskets of fresh-picked flowers for anyone to string a garland to keep or gift. Installed at Unison last year — flowers are picked and strung fresh on arrival.",
+    note: null,
+    contact: { email: "waytashekwaytashek@gmail.com", phone: "", links: [
+      { label: "Instagram", url: "https://www.instagram.com/themountainsspirit" }
+    ] }
+  },
+  {
+    name: "Lift The Lid",
+    artist: "Sheradan Aunee Magee",
+    loc: "Huntington, OR / Boise, ID",
+    power: false,
+    returning: true,
+    crew: "2 (self + helper)",
+    footprint: "4 ft H × 3 ft W × 2 ft D",
+    powerNote: "Self-sufficient, battery packs (day charge only)",
+    blurb: "A curiosity cabinet built from collected baby-wipe lids — each one a tiny illuminated world to lift and discover, with hidden scrolls tucked in two window pockets. Seen at Unison 2024, Shambhala, Konnexion, Cascadia, What The Fest.",
+    note: "Would appreciate a small travel stipend if also accepted for the String Theory Somatics workshop.",
+    contact: { email: "theproseflow@gmail.com", phone: "208-971-9665", links: [
+      { label: "Instagram", url: "https://www.instagram.com/sheradical" },
+      { label: "whirledpieces.com", url: "https://www.whirledpieces.com" }
+    ] }
+  },
+  {
+    name: "Light Sand Drawing Box",
+    artist: "Asa Dean",
+    loc: "Durango, CO",
+    power: true,
+    returning: true,
+    crew: "2 (self + helper)",
+    footprint: "4 × 2 × 4 ft, elevated",
+    powerNote: "Standard 3-prong outlet",
+    blurb: "An illuminated sandbox — move the sand and draw with light. A late-night magnet for meeting strangers. Previously set up between the pavilion and the river at Unison, Kinnection Campout, and Electric Forest.",
+    note: null,
+    contact: { email: "somahelpyouout@gmail.com", phone: "678-333-1284", links: [] }
+  },
+  {
+    name: "Whirling Rainbow Unison Parade",
+    artist: "Arielle Reyna (\"Mother Magick\")",
+    loc: "Taos, NM",
+    power: false,
+    returning: false,
+    crew: "1, leading volunteers",
+    footprint: "Free-form, moves through the grounds",
+    powerNote: "None",
+    blurb: "An inaugural walking parade — kids from Rainbow Lightning camp lead with handmade eco-throws, musicians carry the beat, and the route stops for small performances at the open-mic stage, riverside, and sacred fire. Grand marshal has run parade culture in New Orleans.",
+    note: "Mainly needs a firm lineup slot on the schedule so people can join at the start.",
+    contact: { email: "arielle.christian9@gmail.com", phone: "502-395-2047", links: [] }
+  },
+  {
+    name: "The Hug Bar",
+    artist: "Tahir Haseebullah Tahir",
+    loc: "Denver, CO",
+    power: false,
+    returning: true,
+    crew: "2 (+ volunteers)",
+    footprint: "4 ft W × 9 ft H",
+    powerNote: "None listed",
+    blurb: "Pay for a hug with a compliment to a stranger — five hug varieties on offer. Set up near the main-stage entrance last year, catching people on the way in and out. Also has a mobile theater available for a movie night.",
+    note: null,
+    contact: { email: "Has@gmail.com", phone: "206-387-6263", links: [
+      { label: "Facebook", url: "https://www.facebook.com/profile.php?id=100054491858984" }
+    ] }
+  },
+  {
+    name: "The Shamanic Womb Cave",
+    artist: "Clare Fracassi & Brenda Ryan (Blood Sisters of the Red Temple)",
+    loc: "Austin, TX",
+    power: true,
+    returning: false,
+    crew: "2 (+ build help needed)",
+    footprint: "~12 × 12 ft, 7.2 ft dome (open to larger)",
+    powerNote: "Lighting",
+    blurb: "A red geodesic dome, open 24/7, filled with co-created menstrual art and a divine-feminine altar — a non-verbal space for all genders to sit with. Team previously built this at Medicine for the People.",
+    note: "Asked how Women's Village leaders are compensated and floated this becoming a recurring Unison offering.",
+    contact: { email: "redtemplepodcast@gmail.com, clareofthesolstice@gmail.com, brenda.ryan@gmail.com", phone: "310-751-4694 / 512-902-7872", links: [
+      { label: "Instagram: @redtemplepodcast", url: "https://www.instagram.com/redtemplepodcast" },
+      { label: "@clareofthesolstice", url: "https://www.instagram.com/clareofthesolstice" },
+      { label: "@brendaryanheartspace", url: "https://www.instagram.com/brendaryanheartspace" }
+    ] }
+  },
+  {
+    name: "girlwizard's Portal",
+    artist: "Austin Torrez",
+    loc: "Albuquerque, NM",
+    power: true,
+    returning: true,
+    crew: "2 (self + helper)",
+    footprint: "Fits a 5 × 5 ft cube",
+    powerNote: "Powers the sculpture",
+    blurb: "An interactive CRT-television sculpture looping soft, mellow, healing footage — a small reprieve into a simpler time. Growing bigger with each showing. Previously at Oregon Country Fair and Hydrophonic.",
+    note: null,
+    contact: { email: "girlwizard@rustycutz.com", phone: "505-450-5021", links: [
+      { label: "Instagram", url: "https://www.instagram.com/girlwizard.mp3" },
+      { label: "Facebook", url: "https://www.facebook.com/crazyhatboy" }
+    ] }
+  },
+  {
+    name: "Diviner's Guild Carnival",
+    artist: "Amelia Passer",
+    loc: "Boulder, CO",
+    power: true,
+    returning: true,
+    crew: "5 (+ helpers)",
+    footprint: "At least 10 × 10 ft (flexible)",
+    powerNote: "Lights",
+    blurb: "An oracle machine crossed with a carnival sideshow — a bell tent built around an interactive fortune-telling experience, with puppetry and unexpected encounters layered in. The final form is intentionally left to evolve on-site. Returning after Unison 2025.",
+    note: null,
+    contact: { email: "ameliapasser@gmail.com", phone: "601-307-3725", links: [
+      { label: "Instagram", url: "https://www.instagram.com/ameliapasser" },
+      { label: "ameliapasser.com", url: "https://ameliapasser.com" }
+    ] }
+  },
+  {
+    name: "Untitled multi-layer LED piece",
+    artist: "Nick Hopkins (Lazereyestudios)",
+    loc: "Denver, CO",
+    power: true,
+    returning: true,
+    crew: "2 (self + partner)",
+    footprint: "Custom, built to spec",
+    powerNote: "Powers synced LEDs",
+    blurb: "A new, made-for-Unison piece — multiple layered panels with LEDs synced across them. Last year's comparable build, a 7 × 3 ft laser-cut piece, was mainstage art at Badger Bass Camp and got projection-mapped.",
+    note: "Requesting 2 extra passes for the artist's kids (ages 12 and 6).",
+    contact: { email: "Lazereyestudios@gmail.com", phone: "385-444-1565", links: [
+      { label: "Instagram", url: "https://instagram.com/lazereyestudios" },
+      { label: "lazereyestudios.com", url: "https://lazereyestudios.com" }
+    ] }
+  },
+  {
+    name: "Photonic IV",
+    artist: "Curtis Joe Walker",
+    loc: "Las Vegas, NV",
+    power: false,
+    returning: true,
+    crew: "1 (open to a lighting-design helper)",
+    footprint: "30 LED light tubes",
+    powerNote: "Fully off-grid, battery powered",
+    blurb: "Thirty mobile light tubes arranged into a site-specific show — the artist frames it as clearing people's auras with pure color. Can run to music or stand alone. Previously at Organika Off Grids.",
+    note: null,
+    contact: { email: "leaver_brevity_0i@icloud.com", phone: "702-696-8808", links: [
+      { label: "Instagram: Teketubelv", url: "https://www.instagram.com/teketubelv" }
+    ] }
+  },
+  {
+    name: "Portal Potties",
+    artist: "Hillary Bernhardt",
+    loc: "Durango, CO",
+    power: false,
+    returning: true,
+    crew: "2 (self + helper)",
+    footprint: "Standard port-a-potty, multiple units",
+    powerNote: "Battery-powered lights (self-supplied)",
+    blurb: "Ordinary-looking port-a-potties concealing full theme makeovers — Grandma's Bathroom, Under the Sea, Princess Room, Jurassic Park — stocked with free wipes, sanitizer, and lotion. Crew revisits and restocks each unit throughout the weekend. A hit at Lightning in a Bottle and last year's Tico Time.",
+    note: "A materials budget would help but isn't required.",
+    contact: { email: "hbern26@gmail.com", phone: "410-507-6668", links: [
+      { label: "Instagram", url: "https://www.instagram.com/portal_potties" }
+    ] }
+  },
+  {
+    name: "Nature Mandala",
+    artist: "Ramona Teo",
+    loc: "Tijeras, NM",
+    power: true,
+    returning: true,
+    crew: "2 (+ build-day volunteers)",
+    footprint: "~12 ft diameter + 3 ft walking path",
+    powerNote: "Lighting for night illumination",
+    blurb: "A large radial earthwork of stone, sticks, flowers, and shells, laid with prayer as a blessing for the land — a pause-and-reflect spot that photographs beautifully from a drone. Sited near the yoga tent at Unison 2025; requests a more visible spot this year, moved off the mountain edge.",
+    note: null,
+    contact: { email: "ramona@divinenaturearts.com", phone: "505-459-6460", links: [
+      { label: "Instagram", url: "https://www.instagram.com/divine.nature.arts" },
+      { label: "Facebook", url: "https://www.facebook.com/DivineNatureArts" },
+      { label: "divinenaturearts.com", url: "http://www.divinenaturearts.com" }
+    ] }
+  },
+  {
+    name: "Temple of the Two-Headed Serpent",
+    artist: "Sam Schofield",
+    loc: "Salt Lake City, UT",
+    power: true,
+    returning: true,
+    crew: "2",
+    footprint: "10 × 10 × 10 ft",
+    powerNote: "One extension cord",
+    blurb: "A phone booth disguised as a temple — dial in and leave a message for the dead, with recordings (by choice) released to the project's SoundCloud. Has previously blessed Unison, Revival, and Element 11.",
+    note: null,
+    contact: { email: "sschofield@gmail.com", phone: "435-705-9129", links: [
+      { label: "Instagram", url: "https://www.instagram.com/snowfirearts/" },
+      { label: "Facebook", url: "https://www.facebook.com/ssschofieldsnowfire.art" }
+    ] }
+  },
+  {
+    name: "WOMBeARTh",
+    artist: "Liva Vino",
+    loc: "Taos, NM",
+    power: false,
+    returning: false,
+    crew: "1 (all help included)",
+    footprint: "4 × 8 ft wall",
+    powerNote: "None — solar fairy lights only",
+    blurb: "35mm film portraits of women in nature, displayed on a mirror-mosaic wall so every viewer sees their own reflection woven into the images. The artist's first festival showing.",
+    note: "Requesting 3 total passes (self + 2 collaborators).",
+    contact: { email: "liva.vin@gmail.com", phone: "707-223-5723", links: [
+      { label: "Instagram", url: "https://www.instagram.com/lovelettersfromearth" }
+    ] }
+  },
+  {
+    name: "Sacred Earth Dome Home",
+    artist: "Brian Kennedy",
+    loc: "Tucson, AZ",
+    power: false,
+    returning: false,
+    crew: "2 (self + partner)",
+    footprint: "10 ft dome, 15 ft drop-cloth radius",
+    powerNote: "Off-grid solar, self-contained",
+    blurb: "A geodesic dome built live on-site, skinned, and then muraled by hand — the crew is offering to leave one canvas as a piece festivalgoers can sign, glowing at night as a quieter art corner. Previously at Riaht Fest and Sacred Earth Community Gathering.",
+    note: null,
+    contact: { email: "bripatkennedy@gmail.com", phone: "920-246-0886", links: [
+      { label: "Instagram", url: "https://www.instagram.com/sunflowerandthewizard" },
+      { label: "Facebook", url: "https://www.facebook.com/share/1DCVMGVsMh/" }
+    ] }
+  }
+];
+
+const grid = document.getElementById('grid');
+const searchInput = document.getElementById('search');
+const powerBtn = document.getElementById('filter-power');
+const returnBtn = document.getElementById('filter-return');
+const countEl = document.getElementById('count');
+
+let state = { q: '', power: false, returning: false };
+
+function renderContact(c){
+  if (!c) return '';
+  const parts = [];
+  const emails = c.email.split(',').map(s => s.trim()).filter(Boolean);
+  emails.forEach(email => {
+    parts.push(`<a href="mailto:${email}">${email}</a>`);
+  });
+  if (c.phone) {
+    c.phone.split(' / ').forEach(p => {
+      parts.push(`<a href="tel:${p.replace(/[^0-9+]/g, '')}">${p}</a>`);
+    });
+  }
+  (c.links || []).forEach(l => {
+    parts.push(`<a href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`);
+  });
+  if (!parts.length) return '';
+  return `<div class="contact">${parts.join('')}</div>`;
+}
+
+function render(){
+  grid.innerHTML = '';
+  let shown = 0;
+  installations.forEach(item => {
+    const hay = (item.name + ' ' + item.artist + ' ' + item.loc + ' ' + item.blurb + ' ' + (item.contact ? item.contact.email : '')).toLowerCase();
+    const matchesQ = !state.q || hay.includes(state.q);
+    const matchesPower = !state.power || item.power;
+    const matchesReturn = !state.returning || item.returning;
+    const visible = matchesQ && matchesPower && matchesReturn;
+    if (visible) shown++;
+
+    const card = document.createElement('article');
+    card.className = 'card';
+    if (!visible) card.hidden = true;
+
+    card.innerHTML = `
+      <div class="card-head">
+        <h2>${item.name}</h2>
+        <span class="byline">${item.artist}<span class="loc">${item.loc}</span></span>
+      </div>
+      <div class="tags">
+        ${item.power ? '<span class="tag power">Needs power</span>' : ''}
+        ${item.returning ? '<span class="tag return">Returning artist</span>' : ''}
+      </div>
+      <p class="blurb">${item.blurb}</p>
+      <div class="facts">
+        <span><b>Crew</b> ${item.crew}</span>
+        <span><b>Footprint</b> ${item.footprint}</span>
+        <span><b>Power</b> ${item.powerNote}</span>
+      </div>
+      ${item.note ? `<p class="note">${item.note}</p>` : ''}
+      ${renderContact(item.contact)}
+    `;
+    grid.appendChild(card);
+  });
+  countEl.textContent = shown + ' of ' + installations.length + ' shown';
+}
+
+searchInput.addEventListener('input', e => {
+  state.q = e.target.value.trim().toLowerCase();
+  render();
+});
+powerBtn.addEventListener('click', () => {
+  state.power = !state.power;
+  powerBtn.setAttribute('aria-pressed', String(state.power));
+  render();
+});
+returnBtn.addEventListener('click', () => {
+  state.returning = !state.returning;
+  returnBtn.setAttribute('aria-pressed', String(state.returning));
+  render();
+});
+
+render();
+</script>
