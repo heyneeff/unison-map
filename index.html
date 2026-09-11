@@ -1364,6 +1364,13 @@ document.getElementById("img-issue-badge").addEventListener("click", () => {
   alert(imgIssues.join("\n") || "No issues logged.");
 });
 
+// Every autoKey pin's canvas op is funneled through this one chain so only
+// one runs at a time — running them all at once (as the burst of image
+// loads from buildHotspots fired) was what blew past mobile Safari's
+// combined decode+canvas memory budget and silently corrupted or blanked
+// pins on phones (worst with several 1500px+ source uploads at once).
+let autoKeyQueue = Promise.resolve();
+
 function autoKeyWhiteBg(imgEl, pinName){
   // Pins never render larger than a small fraction of the map, so cap the
   // processing resolution well below a full-size upload (some icons are
@@ -1371,6 +1378,13 @@ function autoKeyWhiteBg(imgEl, pinName){
   // blowing past mobile Safari's per-canvas/memory limits and silently
   // corrupting the resulting image (broken-icon pins on phones).
   const MAX_DIM = 800;
+  const waitForLoad = () => new Promise(resolve => {
+    if (imgEl.complete) resolve();
+    else {
+      imgEl.addEventListener("load", resolve, { once:true });
+      imgEl.addEventListener("error", resolve, { once:true }); // still resolve so a broken image can't stall the shared queue forever
+    }
+  });
   const run = () => {
     try {
       const nw = imgEl.naturalWidth, nh = imgEl.naturalHeight;
@@ -1400,8 +1414,10 @@ function autoKeyWhiteBg(imgEl, pinName){
       flagImageIssue(pinName, `white-bg removal threw: ${err.message}`);
     }
   };
-  if (imgEl.complete && imgEl.naturalWidth) run();
-  else imgEl.addEventListener("load", run, { once:true });
+  const task = () => waitForLoad().then(run);
+  const done = autoKeyQueue.then(task, task);
+  autoKeyQueue = done;
+  return done;
 }
 
 // Keeps a hover/active card's popover inside #map-viewport's bounds instead
@@ -1425,6 +1441,20 @@ window.addEventListener("resize", () => {
   const active = frame.querySelector(".hotspot.active");
   if (active) positionCard(active);
 });
+
+// Tracks every pin/decor image (plus its autoKey processing, if any) created
+// during the initial build, so the loading spinner can stay up until the
+// whole map — not just the background — has actually finished rendering.
+let pendingLoads = [];
+function trackImageLoad(imgEl){
+  return new Promise(resolve => {
+    if (imgEl.complete) resolve();
+    else {
+      imgEl.addEventListener("load", resolve, { once:true });
+      imgEl.addEventListener("error", resolve, { once:true });
+    }
+  });
+}
 
 function buildHotspots(){
   frame.querySelectorAll(".hotspot").forEach(el => el.remove());
@@ -1469,7 +1499,8 @@ function buildHotspots(){
     const pieceImg = hs.querySelector("img.piece");
     pieceImg.addEventListener("error", () => flagImageIssue(loc.name, `failed to load icons/${loc.icon}`), { once:true });
     frame.appendChild(hs);
-    if (loc.autoKey) autoKeyWhiteBg(pieceImg, loc.name);
+    pendingLoads.push(trackImageLoad(pieceImg));
+    if (loc.autoKey) pendingLoads.push(autoKeyWhiteBg(pieceImg, loc.name));
     attachDragResize(hs, loc, { rotatable:false, label:loc.name, isLocation:true });
   });
 }
@@ -1498,6 +1529,7 @@ function buildDecor(){
       <div class="resize-handle"></div>
     `;
     frame.appendChild(el);
+    pendingLoads.push(trackImageLoad(el.querySelector("img.piece")));
     attachDragResize(el, d, { rotatable: d.id === "arrow", label: d.id, flip: !!d.flip });
   });
 }
@@ -1948,7 +1980,12 @@ function revealMap(){
   } else {
     render(first); // remote answered in time (null here just means the fetch failed)
   }
-  await waitForBg();
+  // Keep the spinner up through the background AND every pin/decor icon
+  // (including autoKey processing) rather than just the background — on a
+  // slow mobile connection the background can paint well before ~50 pin
+  // images have finished loading, which previously left visitors staring at
+  // icons popping in one by one instead of one clean reveal.
+  await Promise.all([waitForBg(), ...pendingLoads]);
   revealMap();
 })();
 setInterval(updateLiveHighlights, 30000);
